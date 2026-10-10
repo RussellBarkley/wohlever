@@ -1,0 +1,1527 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Job talk</title>
+
+<!--
+  HOW THIS FILE WORKS
+  -------------------
+  - Each <section class="slide"> is one slide. Copy, paste, reorder freely.
+  - data-section="1|2|3" colours the slide for that part of the talk
+    (accent colour and its tick in the progress strip at the bottom).
+
+  STATIC FIGURES
+    <div class="figure"><img src="figures/fig1.png" alt="..."></div>
+    Keep the images in a "figures" folder next to this file (PNG or JPG). The name in src
+    must match the file name exactly, including capitals. Until a file exists, the slide
+    shows a dashed box naming the file it is waiting for.
+    Add  <p class="caption">Author et al. (year). Journal.</p>  under a figure for its reference.
+
+    A row of figures that should sit close together, as large as fits, centred:
+      <div class="figrow">
+        <figure><img src="figures/a.png" alt="..."><figcaption>Reference or label</figcaption></figure>
+        <figure><img src="figures/b.png" alt="..."><figcaption>Reference or label</figcaption></figure>
+      </div>
+    The deck sizes every figure in a row to the same height from the images' own shapes.
+    Sizing options:
+      <div class="figrow balance">     gives each figure about the same area instead, so narrow
+                                       figures come out taller and wide ones shorter
+      <figure data-scale="1.3">        makes that one figure 1.3 times its normal size (0.8 = smaller)
+      <div class="figrow" data-size="0.8">   shrinks the whole row to 0.8 of the largest size that fits
+      <div class="figrow middle">      centres figures of different heights on each other (default: bottoms level)
+      <div class="figrow oneline">     small references, each kept on one line
+
+  POINTS THAT CARRY ACROSS SLIDES
+    <ul class="points-row"> ... </ul>  is a centred line of short points. Copy it to a later slide
+    and add  class="faded"  to the points that slide is not about:  <li class="faded">Fusion and fission</li>
+
+  TRANSITIONS
+    Slides cross-fade. Two speeds near the top of the styles:
+      --fade: 0.45s            between slides of the same background (0s = off)
+      --fade-contrast: 1.8s    between a black slide and a white one, slower so it is easier on the eyes
+
+  VIDEO IN A FIGURE ROW
+    <figure><video src="figures/clip.mp4" loop muted playsinline></video><figcaption>...</figcaption></figure>
+    Use an .mp4 (H.264). It starts from the beginning when the slide opens and loops; click it to pause.
+    A .gif also works, as an ordinary image:  <img src="figures/clip.gif" alt="...">
+
+  WHITE SLIDES
+    Add the word  light  to a slide's class:  <section class="slide light" ...>
+
+  FIND NUCLEI VIEWERS (OME-Zarr, including time-lapses)
+    <div class="viewer"><template> ...embed code... </template></div>
+    Paste the code from the Find Nuclei "Embed" dialog between the <template> tags.
+    For a time-lapse, tick autoplay in that dialog (adds  autoplay fps="4").
+    Optional:  show-channels="FITC"  starts with only the channels whose name contains
+    that text switched on (several names: show-channels="FITC,DAPI").
+    Optional:  hide-channels="calreticulin"  starts with those channels switched off.
+    Each of these viewers runs in its own frame, so two on one slide cannot mix up their data.
+
+  DEEP ZOOM VIEWERS (OpenSeadragon reading Zoomify tiles)
+    <div class="viewer" data-zoomify="https://.../FL_zoomify/"
+         data-width="42795" data-height="42795" data-tile-size="256"
+         data-px-per-micron="7.07106445"></div>
+    Width, height and tile size are the numbers in that folder's ImageProperties.xml.
+    data-px-per-micron draws the scale bar; leave it out for no scale bar.
+
+  Every viewer is created when you arrive on its slide and removed when you leave,
+  so only the viewers on screen use the GPU and the network.
+
+  BACKUP STILLS
+    Put  <img class="still" src="stills/name.png" alt="...">  inside any
+    <div class="viewer">. It is shown if that viewer's script cannot load,
+    when you press V, and in the printed PDF.
+
+  KEYS
+    Right / Space / PageDown   next slide         Left / PageUp   previous slide
+    Home / End                 first / last       F               fullscreen (or the button, bottom right)
+    The numbered strip along the bottom has one block per slide: hover for a preview, click to go there.
+    V                          swap live viewers for their still images
+    Esc                        hand the keyboard back to the deck after using a viewer
+  PageDown and PageUp (what most presentation clickers send) always change slide,
+  even while a viewer has focus.
+
+  PDF BACKUP: File > Print > Save as PDF, landscape, margins "None",
+  "Background graphics" on. Viewers print as their still images.
+-->
+
+<!-- Find Nuclei viewer: each viewer loads this script inside its own frame; fetching it here just warms the cache -->
+<link rel="preload" as="script" href="https://find-nuclei.github.io/embed/v1/viewer.js">
+<!-- OpenSeadragon 4.1.0 and the scale bar plugin, served from the same site as the deep zoom tiles -->
+<script src="https://russellbarkley.github.io/muNS_deepzoom/openseadragon/openseadragon.min.js"></script>
+<script src="https://russellbarkley.github.io/muNS_deepzoom/openseadragon/openseadragon-scalebar.js"></script>
+
+<style>
+  :root {
+    --bg: #000000;            /* true black, so images and viewers sit flush with the slide */
+    --text: #f1f1f1;
+    --muted: #9b9b9b;
+    --rule: #2e2e2e;
+    --s1: #ff4fd0;            /* section colours: magenta, cyan, yellow lookup tables */
+    --s2: #21c7ff;
+    --s3: #ffd633;
+    --accent: var(--text);
+    --font: "Avenir Next", "Segoe UI", "Helvetica Neue", Arial, sans-serif;
+    --fade: 0.45s;            /* cross-fade between slides with the same background; 0s turns it off */
+    --fade-contrast: 1.8s;    /* cross-fade between a black slide and a white one */
+  }
+  [data-section="1"] { --accent: var(--s1); }
+  [data-section="2"] { --accent: var(--s2); }
+  [data-section="3"] { --accent: var(--s3); }
+
+  * { box-sizing: border-box; }
+  html, body { height: 100%; margin: 0; background: var(--bg); color: var(--text); font-family: var(--font); }
+  body { overflow: hidden; }
+
+  #deck { position: fixed; inset: 0; display: grid; place-items: center; }
+
+  /* A slide is a 16:9 box that fills the window. Its font-size tracks its width,
+     so every em-based size below scales with the screen. */
+  .slide {
+    display: flex;
+    grid-area: 1 / 1;                  /* all slides are stacked in the same spot; only one is visible */
+    visibility: hidden;
+    opacity: 0;
+    flex-direction: column;
+    width: min(100vw, 177.778vh);
+    height: min(100vh, 56.25vw);
+    font-size: min(1.5vw, 2.667vh);
+    padding: 2.6em 3.4em 2.4em;
+    position: relative;
+  }
+  /* Cross-fade: the new slide fades in on top of the old one, which stays put until the fade ends. */
+  .slide.active  { visibility: visible; opacity: 1; z-index: 2; animation: slide-in var(--fade) ease-in-out both; }
+  .slide.leaving { visibility: visible; opacity: 1; z-index: 1; }
+  @keyframes slide-in { from { opacity: 0; } to { opacity: 1; } }
+  body { transition: background-color var(--fade) ease-in-out; }
+  @media (prefers-reduced-motion: reduce) { :root { --fade: 0s; --fade-contrast: 0s; } }
+  .slide { background: var(--bg); color: var(--text); }
+
+  /* White slides: add class "light" to the section. Section colours are darkened to stay readable. */
+  .slide.light { --bg: #ffffff; --text: #111111; --muted: #555555; --rule: #cfcfcf;
+                 --s1: #c2188f; --s2: #0077b3; --s3: #9a7400; }
+  .slide.light:not([data-section]) { --accent: var(--text); }   /* white slide outside the three sections */
+  body.light { background: #ffffff; }
+  body.light #count, body.light #mode, body.light #nav button { color: #666; }
+  body.light #nav button:hover { color: #111; }
+  .slide.light .placeholder { border-color: #999; }
+
+  h1, h2, h3, p, ul { margin: 0; }
+  h1 { font-size: 3.5em; font-weight: 600; line-height: 1.08; letter-spacing: -0.015em; max-width: 17em; }
+  h2 { font-size: 2.05em; font-weight: 600; line-height: 1.15; letter-spacing: -0.01em;
+       padding-left: 0.5em; border-left: 0.14em solid var(--accent); margin-bottom: 0.7em; }
+  h3 { font-size: 1.35em; font-weight: 600; color: var(--accent); margin-bottom: 0.45em; }
+  p, li { font-size: 1.35em; line-height: 1.4; }
+  ul { padding-left: 1.1em; }
+  li { margin-bottom: 0.45em; }
+  li::marker { color: var(--accent); }
+  .muted { color: var(--muted); }
+  .caption { font-size: 0.95em; color: var(--muted); margin-top: 0.7em; line-height: 1.35; }
+
+  /* Layouts */
+  .body { flex: 1; min-height: 0; display: flex; flex-direction: column; }
+  .cols { flex: 1; min-height: 0; display: grid; grid-template-columns: 1fr 1fr; gap: 2em; }
+  .cols.wide-right { grid-template-columns: 2fr 3fr; }
+  .cols.wide-left { grid-template-columns: 3fr 2fr; }
+  ul.takeaways li { font-size: 1.22em; line-height: 1.35; margin-bottom: 0.75em; }
+  /* A row of short points across the slide */
+  ul.points-row { list-style: none; padding: 0; display: flex; flex-wrap: wrap; justify-content: center; gap: 0.2em 2em; margin-bottom: 1em; }
+  ul.points-row li.faded { opacity: 0.25; }
+  ul.points-row li { font-size: 1.2em; margin: 0; display: flex; align-items: center; gap: 0.5em; }
+  ul.points-row li::before { content: ""; width: 0.42em; height: 0.42em; border-radius: 50%; background: var(--accent); flex: none; }
+
+  /* A row of figures, sized by the deck to share one height and sit close together, centred */
+  .figrow { flex: 1; min-height: 0; display: grid; grid-auto-flow: column; grid-auto-columns: max-content;
+            justify-content: center; align-content: center; align-items: end; gap: 1.6em; }
+  .cols.text-figs { grid-template-columns: minmax(0, 5fr) minmax(0, 10fr); gap: 1.4em; }
+  .cols.text-figs li { font-size: 1.2em; margin-bottom: 0.8em; }
+  .figrow figure { margin: 0; flex: none; }
+  .figrow img, .figrow video, .figrow .placeholder { display: block; width: 18em; height: 13.5em; }
+  .figrow video { cursor: pointer; background: #000; }
+  .figrow .placeholder { overflow: hidden; overflow-wrap: anywhere; }
+  .rowsource { font-size: 0.95em; color: var(--muted); text-align: center; margin-top: 0.7em; }
+  .figrow .placeholder { font-size: 1em; display: grid; }
+  .figrow figcaption { font-size: 0.95em; color: var(--muted); margin-top: 0.6em; line-height: 1.3; }
+  .figrows .figrow figcaption { font-size: 0.8em; margin-top: 0.35em; }
+  .figrow.middle { align-items: center; }
+  .figrow.top { align-content: start; }
+  .figrow.oneline figcaption { font-size: 0.72em; white-space: nowrap; }
+  .figrow.mini { gap: 0.8em; justify-content: start; }
+
+  /* Small portraits with names, for crediting people */
+  .people { display: flex; gap: 1.6em; align-items: center; margin-top: 0.8em; }
+  .people figure { margin: 0; display: flex; align-items: center; gap: 0.6em; }
+  .people img, .people .face { width: 3.4em; height: 3.4em; border-radius: 50%; object-fit: cover; object-position: 50% 30%; flex: none; }
+  .people .face { border: 1px dashed #999; }
+  .people figcaption { font-size: 0.9em; color: var(--muted); line-height: 1.2; }
+  /* Figures in the middle, portraits in a column on the left, and a matching empty column on the right */
+  .with-credits { flex: 1; min-height: 0; display: grid; grid-template-columns: 10em minmax(0, 1fr) 10em; gap: 0 1em; }
+  .with-credits > * { min-height: 0; min-width: 0; }
+  .figrows { flex: 1; min-height: 0; display: flex; flex-direction: column; gap: 0.9em; }
+  .figrows > .figrow.major { flex: 1.4; }   /* this row gets more of the height than the others */
+  .people.stacked { flex-direction: column; align-items: flex-start; justify-content: flex-end; gap: 0.7em; margin: 0; }
+
+  /* An image pinned to the top right corner of a slide, such as a QR code */
+  .corner { position: absolute; top: 1.1em; right: 3.4em; width: 7.2em; height: 7.2em; background: #fff; padding: 0.3em; object-fit: contain; }
+  .corner.wide { width: 13em; height: 3.6em; top: 2.3em; background: none; padding: 0; object-position: right center; }
+  .corner-link { position: absolute; top: 2.2em; right: 3.4em; font-size: 1.05em; color: var(--muted); white-space: nowrap; }
+  p.question { margin-top: 0.9em; font-size: 1.35em; font-weight: 600; text-align: center; }
+  .slide:has(> .corner) h2 { max-width: calc(100% - 8.5em); }   /* keep the title clear of the corner image */
+  /* A square logo shown whole inside a white circle (the padding keeps its corners inside the circle) */
+  .corner.round { width: 6.2em; height: 6.2em; top: 1em; border-radius: 50%; background: #fff; padding: 0.95em; }
+  .corner.placeholder { font-size: 0.6em; width: 12em; height: 12em; color: #555; overflow: hidden; overflow-wrap: anywhere; }
+  .corner.wide.placeholder { width: 21.7em; height: 6em; color: #9b9b9b; }
+  .corner.round.placeholder { width: 10.3em; height: 10.3em; padding: 1.6em; border-radius: 50%; }
+  .cols > * { min-height: 0; min-width: 0; display: flex; flex-direction: column; }
+
+  /* Title slide */
+  .slide.title { flex-direction: row; padding: 0; }
+  .slide.title .title-text { flex: 0 0 44%; display: flex; flex-direction: column; justify-content: center;
+                             padding: 2.6em 2.2em 2.4em 3.4em; }
+  .slide.title h1 { font-size: 2.9em; }
+  .slide.title .subtitle { font-size: 1.7em; line-height: 1.25; margin-top: 0.6em; }
+  .slide.title .viewer { outline: 0; }       /* a viewer here runs to the top, right and bottom edges */
+  .slide.title .title-text:only-child { flex: 0 1 75%; }   /* no viewer: the text gets more width */
+  .slide.title .who { margin-top: 2.6em; }
+  .slide.title .who p { font-size: 1.45em; }
+  .slide.title .who p + p { color: var(--muted); font-size: 1.15em; margin-top: 0.3em; }
+
+  /* Outline slide */
+  .outline { display: grid; gap: 1.5em; margin-top: 0.4em; align-content: start; }
+  .cols.outline-cols { grid-template-columns: 11fr 10fr; }
+  .outline-media { position: absolute; top: 1.6em; right: 1.6em; bottom: 2.2em; left: 52%; }
+  ul.subpoints { margin: -0.2em 0 0.9em; }
+  ul.subpoints li { font-size: 1.2em; margin-bottom: 0.25em; }
+  .cols > .outline { display: grid; }          /* keep the grid when the outline sits in a column */
+  .outline > div { padding-left: 1em; border-left: 0.2em solid var(--accent); }
+  .outline p + p { margin-top: 0.25em; }
+  .outline h3 { font-size: 1.6em; margin-bottom: 0.3em; }
+  .outline p { color: var(--text); font-size: 1.2em; }
+
+  /* Section divider */
+  .slide.divider { justify-content: center; }
+  .slide.divider h1 { color: var(--accent); }
+  .slide.divider p { margin-top: 0.8em; color: var(--muted); max-width: 34em; text-wrap: balance; }
+  .slide.divider p.authors { font-size: 1.05em; margin-top: 1.1em; }
+  /* A section slide with text on the left and a figure or video on the right */
+  .slide.divider.split { justify-content: stretch; }
+  .slide.divider.split .cols { grid-template-columns: 5fr 6fr; align-items: stretch; }
+  .slide.divider.split .cols > div:first-child { justify-content: center; }
+  .slide.divider.split h1 { font-size: 3em; }
+  .slide.divider.split p.authors { font-size: 0.9em; white-space: nowrap; }
+
+  /* A wide, short figure above a viewer */
+
+  /* Four viewers in a 2 x 2 grid, each with a label */
+  .grid2x2, .grid2x3 { flex: 1; min-height: 0; display: grid; grid-template-columns: 1fr 1fr; grid-template-rows: 1fr 1fr; gap: 0.9em 1.4em; }
+  .grid2x3 { grid-template-columns: 1fr 1fr 1fr; gap: 0.9em 1.1em; }
+  .grid2x2 > div, .grid2x3 > div { min-height: 0; min-width: 0; display: flex; flex-direction: column; }
+  .grid2x2 h3, .grid2x3 h3 { font-size: 0.95em; margin-bottom: 0.35em; }
+
+  /* Static figures in a 2 x 2 grid, each as large as its cell allows. Add class "framed" for a thick white border. */
+  .figgrid { flex: 1; min-height: 0; display: grid; grid-template-columns: 1fr 1fr; grid-template-rows: 1fr 1fr; gap: 1em 1.4em; }
+  .figgrid .figure { position: relative; min-width: 0; }
+  .figgrid .figure img, .figgrid .figure video { position: absolute; inset: 0; margin: auto; }
+  .figgrid .figure video { cursor: pointer; }
+  .figgrid .cell { min-height: 0; min-width: 0; display: flex; flex-direction: column; }
+  .figgrid .cell .caption { margin-top: 0.4em; font-size: 0.85em; }
+  /* "close": the four figures are pulled toward the middle of the grid instead of the middle of each cell */
+  .figgrid.close { gap: 0.8em 1em; }
+  .figgrid.close > :nth-child(odd) img, .figgrid.close > :nth-child(odd) video { margin-right: 0; }
+  .figgrid.close > :nth-child(even) img, .figgrid.close > :nth-child(even) video { margin-left: 0; }
+  .figgrid.close > :nth-child(-n+2) img, .figgrid.close > :nth-child(-n+2) video { margin-bottom: 0; }
+  .figgrid.close > :nth-child(n+3) img, .figgrid.close > :nth-child(n+3) video { margin-top: 0; }
+  .figgrid.close .cell .caption { text-align: right; }
+  .figgrid .figure .placeholder { position: absolute; inset: 0; width: auto; height: auto; }
+  .figgrid.framed img { border: 0.3em solid #ffffff; }
+
+  /* Three threads side by side: heading, a few points, then a figure, quote or viewer underneath */
+  .threads { flex: 1; min-height: 0; display: grid; grid-template-columns: 1.2fr 1fr 1fr; gap: 0 2.2em; }
+  .threads > div { min-height: 0; min-width: 0; display: flex; flex-direction: column; }
+  .threads h3 { font-size: 1.5em; padding-bottom: 0.3em; border-bottom: 0.1em solid var(--accent); margin-bottom: 0.6em; }
+  .threads li { font-size: 1.12em; line-height: 1.3; margin-bottom: 0.5em; }
+  .threads ul { margin-bottom: 0.8em; }
+  .threads .caption { font-size: 0.8em; margin-top: 0.5em; }
+  .threads blockquote { margin: 0.4em 0 0; padding: 0.2em 0 0.2em 1em; border-left: 0.2em solid var(--accent); font-size: 1.1em; line-height: 1.4; }
+  .threads blockquote cite { white-space: nowrap; font-size: 0.7em !important; }
+  .threads blockquote cite { display: block; font-style: normal; font-size: 0.75em; color: var(--muted); margin-top: 0.7em; }
+  /* A figure that fills whatever space is left in its column */
+  .figure.fill { position: relative; }
+  .figure.fill img, .figure.fill video { position: absolute; inset: 0; margin: auto; }
+  .slide.title .title-media { flex: 1; min-width: 0; margin: 1.6em 1.6em 2.2em 0; }
+  .figure.fill .placeholder { position: absolute; inset: 0; width: auto; height: auto; }
+
+  /* Recap list: a term on the left, one line on the right */
+  dl.recap { display: grid; grid-template-columns: max-content 1fr; gap: 0.9em 2em; margin: 0.6em 0 0; font-size: 1.35em; }
+  dl.recap dt { font-weight: 600; color: var(--accent); }
+  dl.recap dd { margin: 0; }
+  p.pivot { margin-top: 2em; font-size: 1.7em; font-weight: 600; }
+
+  /* A line under a slide title */
+  p.sub { font-size: 1.15em; color: var(--muted); margin: -0.6em 0 0.9em; padding-left: 0.95em; max-width: calc(100% - 7em); }
+
+  /* Live reader-analytics panel beside a viewer */
+  .analytics { gap: 0.9em; font-variant-numeric: tabular-nums; }
+  .analytics .stats { display: flex; gap: 2.2em; }
+  .analytics .stats b { display: block; font-size: 2em; font-weight: 600; line-height: 1.1; color: var(--accent); }
+  .analytics .stats span, .analytics .label { font-size: 0.85em; color: var(--muted); }
+  .analytics .map { flex: 1; min-height: 0; display: flex; flex-direction: column; gap: 0.3em; }
+  .analytics canvas { flex: 1; min-height: 0; width: 100%; background: #0d0d0d; outline: 1px solid var(--rule); }
+  .analytics .maphead { display: flex; justify-content: space-between; align-items: baseline; }
+  .analytics .maphead b { font-size: 1.05em; font-weight: 600; }
+  .analytics .legend { display: flex; align-items: center; gap: 0.5em; font-size: 0.8em; color: var(--muted); }
+  .analytics .legend i { width: 6em; height: 0.6em; display: block;
+                         background: linear-gradient(90deg, #1b1b1b, #3b0f70, #8c2981, #de4968, #fe9f6d, #fcfdbf); }
+  .analytics table { width: 100%; border-collapse: collapse; font-size: 0.8em; }
+  .analytics th { text-align: left; font-weight: 500; color: var(--muted); padding: 0.2em 0.5em 0.3em 0; border-bottom: 1px solid var(--rule); }
+  .analytics td { padding: 0.22em 0.5em 0.22em 0; border-bottom: 1px solid var(--rule); white-space: nowrap; }
+  .analytics td.wait { color: var(--muted); }
+
+  /* Acknowledgements */
+  .ack { flex: 1; min-height: 0; display: grid; grid-template-columns: 11fr 9fr; gap: 0 3em; }
+  .ack > div { min-height: 0; min-width: 0; display: flex; flex-direction: column; }
+  .ack h3 { font-size: 1.1em; margin-bottom: 0.5em; display: flex; align-items: center; gap: 0.5em; }
+  .ack h3 img, .ack h3 .mark { height: 1.5em; width: auto; max-width: 5em; object-fit: contain; flex: none; }
+  .ack h3 .mark { width: 1.5em; border: 1px dashed #999; }
+  .ack .people + h3, .ack .credit + h3 { margin-top: 0.75em; }
+  .people.large { gap: 1.8em; margin-top: 0; align-items: flex-start; }
+  .people.large figure { flex-direction: column; gap: 0.4em; text-align: center; }
+  .people.large img, .people.large .face { width: 5em; height: 5em; }
+  .people.large figcaption { color: var(--text); }
+  .credit { font-size: 1em; line-height: 1.3; margin-bottom: 0.45em; }
+  .credit span { display: block; font-size: 0.85em; color: var(--muted); }
+  .logos { display: flex; justify-content: space-between; align-items: center; gap: 2.5em; margin-top: 1em; }
+  .logos img, .logos .placeholder { height: 3.6em; width: auto; max-width: 30%; object-fit: contain; }
+  .logos .placeholder { width: 30%; font-size: 0.7em; height: 5.1em; }
+  .dateline { position: absolute; top: 3.6em; right: 3.4em; font-size: 1em; color: var(--muted); }
+
+  /* Static figures */
+  .figure { flex: 1; min-height: 0; display: grid; place-items: center; }
+  .figure img, .figure video { max-width: 100%; max-height: 100%; object-fit: contain; }
+  .placeholder { width: 100%; height: 100%; display: grid; place-items: center; text-align: center;
+                 border: 1px dashed #555; color: var(--muted); font-size: 1.1em; padding: 1em; }
+
+  /* Live viewers */
+  .viewer { flex: 1; min-height: 0; position: relative; background: #000; outline: 1px solid var(--rule); overflow: hidden; }
+  .viewer iframe.fn { position: absolute; inset: 0; width: 100%; height: 100%; border: 0; display: block; background: #000; }
+  .viewer .osd { position: absolute !important; inset: 0; }   /* !important: OpenSeadragon sets its own inline position */
+  .viewer img.still { display: none; position: absolute; inset: 0; width: 100%; height: 100%; object-fit: contain; }
+  .viewer .notice { display: none; position: absolute; inset: 0; place-items: center; text-align: center;
+                    padding: 2em; color: #9b9b9b; font-size: 1.1em; line-height: 1.4; }
+  .viewer.off img.still { display: block; }
+  .viewer.off:not(:has(img.still)) .notice { display: grid; }
+
+  /* Deck furniture */
+  /* The strip along the bottom: one numbered block per slide. Hover for a preview, click to go there. */
+  #progress { position: fixed; left: 0; right: 0; bottom: 0; height: 20px; display: flex; gap: 2px; z-index: 5; }
+  #progress button { flex: 1; min-width: 0; border: 0; padding: 0; margin: 0; cursor: pointer; font: 600 11px/20px var(--font);
+                     font-variant-numeric: tabular-nums; text-align: center;
+                     background: color-mix(in srgb, var(--accent, #777) 24%, transparent); color: #b5b5b5; }
+  #progress button:not([data-section]) { --accent: #8a8a8a; }
+  #progress button.done { background: var(--accent, #777); color: #000; }
+  #progress button.current { box-shadow: inset 0 3px 0 #ffffff; }
+  #progress button:hover { filter: brightness(1.25); }
+  body.light #progress button { color: #555; }
+  body.light #progress button.done { color: #000; }
+  body.light #progress button.current { box-shadow: inset 0 3px 0 #111111; }
+
+  /* Preview that pops up from the strip */
+  #thumb { position: fixed; bottom: 28px; width: 256px; height: 144px; overflow: hidden; display: none; z-index: 6;
+           background: #000; outline: 2px solid #ffffff; box-shadow: 0 6px 24px rgba(0, 0, 0, 0.6); pointer-events: none; }
+  #thumb.on { display: block; }
+  body.light #thumb { outline-color: #111111; box-shadow: 0 6px 24px rgba(0, 0, 0, 0.3); }
+  #thumb .slide { position: absolute; left: 0; top: 0; width: 1600px; height: 900px; font-size: 24px;
+                  transform: scale(0.16); transform-origin: 0 0; visibility: visible; opacity: 1; animation: none; }
+  #thumb .viewer { background: #101010; }
+  #thumb .viewer::after { content: "interactive viewer"; position: absolute; inset: 0; display: grid; place-items: center;
+                          color: #8a8a8a; font-size: 2em; }
+
+  #count { position: fixed; right: 16px; bottom: 32px; font-size: 15px; color: var(--muted); font-variant-numeric: tabular-nums; }
+  #mode { position: fixed; left: 14px; bottom: 30px; font-size: 13px; color: var(--muted); display: none; }
+  body.stills #mode { display: block; }
+  #nav { position: fixed; right: 84px; bottom: 23px; display: flex; gap: 4px; opacity: 0; transition: opacity .15s; }
+  body:hover #nav { opacity: 1; }
+  #nav button { background: none; border: 0; color: var(--muted); font: inherit; font-size: 30px; line-height: 1; padding: 4px 10px 6px; cursor: pointer;
+                display: grid; place-items: center; min-width: 40px; height: 40px; }
+  #nav svg { width: 22px; height: 22px; display: block; }
+  #nav button:hover, #nav button:focus-visible { color: var(--text); }
+  #nav button:focus-visible { outline: 1px solid var(--text); }
+
+  @page { size: 13.333in 7.5in; margin: 0; }
+  @media print {
+    html, body { height: auto; }
+    body { overflow: visible; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+    #deck { position: static; display: block; }
+    .slide { display: flex !important; visibility: visible !important; opacity: 1 !important; animation: none !important;
+             width: 13.333in; height: 7.5in; font-size: 19.2px;
+             break-after: page; page-break-after: always; break-inside: avoid; }
+    .viewer iframe.fn, .viewer .osd { display: none !important; }
+    .viewer img.still { display: block !important; }
+    .viewer:not(:has(img.still)) .notice { display: grid !important; }
+    #progress, #count, #nav, #mode, #thumb { display: none !important; }
+  }
+</style>
+</head>
+
+<body>
+<main id="deck">
+
+  <!-- ============ TITLE ============ -->
+  <section class="slide title">
+    <div class="title-text">
+      <h1>From Viral Proteins to Ubiquilins</h1>
+      <p class="subtitle">How fluorescent tags shape phase separation in cells</p>
+      <div class="who">
+        <p>Russell Barkley, PhD</p>
+        <p>Postdoctoral candidate seminar</p> 
+	<p>Wohlever Lab</p>
+	<p>University of Pittsburgh</p>
+      </div>
+    </div>
+    <!-- The collage video fills the right side of the title page and loops. -->
+    <div class="figure fill title-media"><video src="figures/title.mp4" loop muted playsinline preload="auto"></video></div>
+  </section>
+
+  <!-- ============ OUTLINE ============ -->
+  <section class="slide">
+    <h2>Outline</h2>
+    <div class="cols outline-cols">
+      <div class="outline">
+        <div data-section="1">
+          <h3>Biomolecular condensates</h3>
+          <p>Reovirus µNS forms condensates in cells</p>
+          <p>Tags changed wild-type and mutant condensation</p>
+        </div>
+        <div data-section="2">
+          <h3>Virtual microscopy</h3>
+          <p>High-content imaging of whole cell populations</p>
+          <p>Cloud-hosted OME-Zarr in a web browser</p>
+        </div>
+        <div data-section="3">
+          <h3>Ubiquilin phase separation in cells</h3>
+          <p>Testing the effect of tags on UBQLN condensation</p>
+          <p>Using tags to link condensation and proteostasis</p>
+        </div>
+      </div>
+      <!-- The mosaic fills the right side of the slide, as the collage does on the title page. -->
+      <div class="outline-media">
+        <div class="viewer">
+          <template>
+            <find-nuclei-viewer
+              id="fig-mosaic"
+              url="https://nyu1.osn.mghpcc.org/barkley-replication/nuclei_mosaic.zarr"
+              channels="0:on:FFFFFF:0:240"
+            ></find-nuclei-viewer>
+          </template>
+          <!-- Backup screenshot: <img class="still" src="stills/fig-mosaic.png" alt="Mosaic of nuclei"> -->
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============ SECTION DIVIDER ============ -->
+  <section class="slide divider light" data-section="1">
+    <h1>Biomolecular condensates</h1>
+    <p>Fluorescent protein tags affect the condensation properties of a phase-separating viral protein</p>
+    <p class="authors">Russell J. R. Barkley, Jack C. Crowley, Andrew J. Brodrick, Warren R. Zipfel, and John S. L. Parker</p>
+  </section>
+
+  <!-- ============ POINTS + ROW OF REFERENCED FIGURES (white) ============ -->
+  <section class="slide light" data-section="1">
+    <h2>Hallmarks of biomolecular condensates</h2>
+    <ul class="points-row">
+      <li>Round morphology</li>
+      <li>Fusion and fission</li>
+      <li>Internal rearrangement</li>
+      <li>Saturation concentration</li>
+    </ul>
+    <div class="figrow">
+      <figure>
+        <img src="figures/brangwynne-2009.png" alt="Figure from Brangwynne et al. 2009">
+        <figcaption>Brangwynne et al. (2009). Science.</figcaption>
+      </figure>
+      <figure>
+        <img src="figures/uebel-2019.png" alt="Figure from Uebel and Phillips 2019">
+        <figcaption>Uebel and Phillips (2019). MicroPubl Biol.</figcaption>
+      </figure>
+    </div>
+  </section>
+
+  <!-- ============ ROW OF THREE FIGURES (white) ============ -->
+  <section class="slide light" data-section="1">
+    <h2>Reovirus factories are round once freed from microtubules</h2>
+    <ul class="points-row">
+      <li>Round morphology</li>
+      <li class="faded">Fusion and fission</li>
+      <li class="faded">Internal rearrangement</li>
+      <li class="faded">Saturation concentration</li>
+    </ul>
+    <!-- "balance" gives the three figures about equal area; data-scale then enlarges or shrinks each one.
+         Raise Parker's number (or lower the other two) for a bigger difference. -->
+    <div class="figrow balance middle">
+      <figure data-scale="0.9">
+        <img src="figures/reovirus-schematic.png" alt="Schematic of the reovirus particle and genome">
+        <figcaption>M3 encodes µNS</figcaption>
+      </figure>
+      <figure data-scale="1.25">
+        <img src="figures/parker-2002.png" alt="Figure from Parker et al. 2002">
+        <figcaption>Parker et al. (2002). J Virol.</figcaption>
+      </figure>
+      <figure data-scale="0.9">
+        <img src="figures/barkley-2024.png" alt="Figure from Barkley et al. 2024">
+      </figure>
+    </div>
+  </section>
+
+  <!-- ============ ONE FIND NUCLEI VIEWER, FULL WIDTH ============ -->
+  <section class="slide light" data-section="1">
+    <h2>Observe the filamentous morphology of reovirus viral factories</h2>
+    <div class="body">
+      <div class="viewer">
+        <template>
+          <!-- Channels: calreticulin, DAPI, reovirus. Calreticulin starts switched off. -->
+          <find-nuclei-viewer
+            id="fig-reovirus"
+            url="https://nyu1.osn.mghpcc.org/barkley-replication/antibody_repeat/guineapig_primary_secondary_Cycle_01.zarr"
+            hide-channels="calreticulin"
+          ></find-nuclei-viewer>
+        </template>
+        <!-- Backup screenshot: <img class="still" src="stills/fig-reovirus.png" alt="Reovirus-infected cells"> -->
+      </div>
+    </div>
+  </section>
+
+  <!-- ============ POINTS BESIDE A ROW OF TALL FIGURES (white) ============ -->
+  <section class="slide light" data-section="1">
+    <!-- Original title: µNS transfection to study the formation and dynamics of viral factory-like structures in CV-1 cells -->
+    <h2>Transfected µNS forms factory-like structures</h2>
+    <div class="cols text-figs">
+      <div>
+        <ul>
+          <!-- Originals: "Minimal region of µNS to form inclusions was mapped to residues 472-721"
+               and "It is thought that µNS self-assembly is mediated through coiled-coil domains" -->
+          <li>Residues 472-721 are the minimal region that forms inclusions</li>
+          <li>Coiled-coil domains are thought to drive self-assembly</li>
+        </ul>
+        <div class="figrow mini top">
+          <figure data-ratio="1"><video src="figures/FL.mp4" loop muted playsinline preload="auto"></video></figure>
+          <figure data-ratio="1"><video src="figures/MR.mp4" loop muted playsinline preload="auto"></video></figure>
+        </div>
+      </div>
+      <div>
+        <!-- data-ratio is only the shape of the dashed box shown until the image file exists (width / height). -->
+        <div class="figrow oneline">
+          <figure data-ratio="0.5">
+            <img src="figures/broering-2002.png" alt="Figure from Broering et al. 2002">
+            <figcaption>Broering et al. (2002). J Virol.</figcaption>
+          </figure>
+          <figure data-ratio="0.5">
+            <img src="figures/broering-2005.png" alt="Figure from Broering et al. 2005">
+            <figcaption>Broering et al. (2005). J Virol.</figcaption>
+          </figure>
+          <figure data-ratio="0.5">
+            <img src="figures/alphafold3.png" alt="AlphaFold3 structure prediction of µNS">
+            <figcaption>AlphaFold3 prediction</figcaption>
+          </figure>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============ FUSION AND FISSION: THREE FIGURES FROM ONE PAPER (white) ============ -->
+  <section class="slide light" data-section="1">
+    <h2>µNS inclusions fuse and relax like liquids</h2>
+    <ul class="points-row">
+      <li class="faded">Round morphology</li>
+      <li>Fusion and fission</li>
+      <li class="faded">Internal rearrangement</li>
+      <li class="faded">Saturation concentration</li>
+    </ul>
+    <!-- data-scale: fusionB and fusionC are drawn at 0.6 of fusionA's height. -->
+    <div class="figrow middle">
+      <figure data-ratio="0.5"><img src="figures/fusionA.png" alt="Fusion of µNS inclusions, panel A"></figure>
+      <figure data-ratio="1" data-scale="0.6"><img src="figures/fusionB.png" alt="Fusion of µNS inclusions, panel B"></figure>
+      <figure data-ratio="1" data-scale="0.6"><img src="figures/fusionC.png" alt="Fusion of µNS inclusions, panel C"></figure>
+    </div>
+  </section>
+
+  <!-- ============ INTERNAL REARRANGEMENT: 2 x 2 GRID OF FIGURES AND VIDEOS (white) ============ -->
+  <section class="slide light" data-section="1">
+    <h2>µNS is mobile but viscous inside inclusions</h2>
+    <ul class="points-row">
+      <li class="faded">Round morphology</li>
+      <li class="faded">Fusion and fission</li>
+      <li>Internal rearrangement</li>
+      <li class="faded">Saturation concentration</li>
+    </ul>
+    <!-- Two rows of two, each row centred on the slide. The top row gets more of the height ("major").
+         loop.mp4 is drawn at 0.85 of the height of the video beside it (data-scale).
+         The portraits sit in a strip of their own underneath, so they can never cover a figure. -->
+    <div class="figrows">
+      <div class="figrow middle major">
+        <figure data-ratio="1"><video src="figures/photoconversion.mp4" loop muted playsinline preload="auto"></video></figure>
+        <figure data-ratio="1" data-scale="0.85"><video src="figures/loop.mp4" loop muted playsinline preload="auto"></video></figure>
+      </div>
+      <div class="figrow oneline">
+        <figure data-ratio="1">
+          <img src="figures/multiphoton.png" alt="Multiphoton excitation, from Zipfel et al. 2003">
+          <figcaption>Zipfel et al. (2003). Nat Biotech.</figcaption>
+        </figure>
+        <figure data-ratio="1"><img src="figures/FRAP.png" alt="FRAP of µNS inclusions"></figure>
+      </div>
+    </div>
+    <div class="people">
+      <figure><img src="figures/warren.png" alt="Warren Zipfel"><figcaption>Warren Zipfel</figcaption></figure>
+      <figure><img src="figures/jack.png" alt="Jack Crowley"><figcaption>Jack Crowley</figcaption></figure>
+    </div>
+  </section>
+
+  <!-- ============ TWO DEEP ZOOM IMAGES SIDE BY SIDE (OpenSeadragon) ============ -->
+  <section class="slide" data-section="1">
+    <h2>Full-length µNS forms more inclusions</h2>
+    <img class="corner" src="figures/qr.png" alt="QR code">
+    <div class="cols">
+      <div>
+        <h3>moxGFP::µNS(1-721)</h3>
+        <div class="viewer"
+             data-zoomify="https://russellbarkley.github.io/muNS_deepzoom/FL_zoomify/"
+             data-width="42795" data-height="42795" data-tile-size="256"
+             data-px-per-micron="7.07106445">
+          <!-- Backup screenshot: <img class="still" src="stills/muns-fl.png" alt="moxGFP::µNS(1-721) map"> -->
+        </div>
+      </div>
+      <div>
+        <h3>moxGFP::µNS(472-721)</h3>
+        <div class="viewer"
+             data-zoomify="https://russellbarkley.github.io/muNS_deepzoom/MR_zoomify/"
+             data-width="42795" data-height="42795" data-tile-size="256"
+             data-px-per-micron="7.07106445">
+          <!-- Backup screenshot: <img class="still" src="stills/muns-mr.png" alt="moxGFP::µNS(472-721) map"> -->
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============ TWO TIME-LAPSES SIDE BY SIDE (Find Nuclei) ============ -->
+  <section class="slide" data-section="1">
+    <h2>Watching inclusions nucleate across a whole field</h2>
+    <div class="cols">
+      <div>
+        <h3>moxGFP::µNS(1-721)</h3>
+        <div class="viewer">
+          <template>
+            <find-nuclei-viewer
+              id="fig-video-fl"
+              show-channels="FITC"
+              url="https://nyu1.osn.mghpcc.org/barkley-replication/nucleation/2022-09-29_FL.zarr"
+              autoplay fps="4"
+            ></find-nuclei-viewer>
+          </template>
+          <!-- Backup screenshot: <img class="still" src="stills/fig-video-fl.png" alt="moxGFP::µNS(1-721) time-lapse"> -->
+        </div>
+      </div>
+      <div>
+        <h3>moxGFP::µNS(472-721)</h3>
+        <div class="viewer">
+          <template>
+            <find-nuclei-viewer
+              id="fig-video-mr"
+              show-channels="FITC"
+              url="https://nyu1.osn.mghpcc.org/barkley-replication/nucleation/2022-09-28_MR.zarr"
+              autoplay fps="4"
+            ></find-nuclei-viewer>
+          </template>
+          <!-- Backup screenshot: <img class="still" src="stills/fig-video-mr.png" alt="moxGFP::µNS(472-721) time-lapse"> -->
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============ SATURATION CONCENTRATION: THREE FIGURES (white) ============ -->
+  <section class="slide light" data-section="1">
+    <h2>Inclusion density is higher for full-length µNS</h2>
+    <ul class="points-row">
+      <li class="faded">Round morphology</li>
+      <li class="faded">Fusion and fission</li>
+      <li class="faded">Internal rearrangement</li>
+      <li>Saturation concentration</li>
+    </ul>
+    <div class="figrow" data-size="0.8">
+      <figure data-ratio="1"><img src="figures/densityA.png" alt="Density of moxGFP::µNS inclusions, panel A"></figure>
+      <figure data-ratio="1"><img src="figures/densityB.png" alt="Density of moxGFP::µNS inclusions, panel B"></figure>
+      <figure data-ratio="0.7"><img src="figures/Csat.png" alt="Saturation concentration of moxGFP::µNS"></figure>
+    </div>
+  </section>
+
+  <!-- ============ MID-WAY SUMMARY: THE FOUR HALLMARKS (white) ============ -->
+  <section class="slide light" data-section="1">
+    <h2>µNS inclusions behave like biomolecular condensates</h2>
+    <div class="body">
+      <dl class="recap">
+        <dt>Round morphology</dt><dd>Round in transfected cells, and in infected cells once freed from microtubules</dd>
+        <dt>Fusion and fission</dt><dd>Inclusions fuse and relax to spheres</dd>
+        <dt>Internal rearrangement</dt><dd>µNS moves within inclusions, slowly</dd>
+        <dt>Saturation concentration</dt><dd>Inclusions appear above a threshold concentration</dd>
+      </dl>
+      <p class="pivot">All of this was measured with a GFP tag.</p>
+    </div>
+  </section>
+
+  <!-- ============ ONE FIGURE (white) ============ -->
+  <section class="slide light" data-section="1">
+    <h2>Tags changed condensation of wild-type µNS</h2>
+    <ul class="subpoints">
+      <li>GFP tags made 6 to 7 times more condensates than untagged µNS</li>
+      <li>mNeonGreen was the closest to untagged µNS</li>
+    </ul>
+    <!-- Left: GFP against untagged. Middle: the mNeonGreen quantification. Right: the images that go with it. -->
+    <div class="figrow middle">
+      <figure data-ratio="1.3"><img src="figures/untagged.png" alt="Inclusion formation by moxGFP::µNS and untagged µNS"></figure>
+      <figure data-ratio="1.3"><img src="figures/mneon.png" alt="Quantification of condensation by untagged, GFP-tagged and mNeonGreen-tagged µNS"></figure>
+      <figure data-ratio="1"><img src="figures/wildtype.png" alt="mNeonGreen-tagged wild-type µNS"></figure>
+    </div>
+  </section>
+
+  <!-- ============ FIGURE, VIDEO, PLOT (white) ============ -->
+  <section class="slide light" data-section="1">
+    <h2>Tags rescued mutants that should not condense</h2>
+    <ul class="subpoints">
+      <li>5 to 75% of cells formed condensates</li>
+    </ul>
+    <div class="figrow">
+      <figure data-ratio="1.5">
+        <img src="figures/broering-2005-mutants.png" alt="Figure from Broering et al. 2005">
+        <figcaption>Broering et al. (2005). JVI.</figcaption>
+      </figure>
+      <figure data-ratio="1"><video src="figures/dendra2.mp4" loop muted playsinline preload="auto"></video></figure>
+      <figure data-ratio="1.5"><img src="figures/mutants.png" alt="Quantification of condensation by µNS mutants"></figure>
+    </div>
+  </section>
+
+  <!-- ============ TWO WIDE FIGURES (white) ============ -->
+  <section class="slide light" data-section="1">
+    <h2>Rescue depended on the tag</h2>
+    <ul class="subpoints">
+      <li>0 to 50% of cells formed condensates</li>
+    </ul>
+    <div class="figrow" data-size="0.8">
+      <figure data-ratio="2.2"><img src="figures/halotag.png" alt="HaloTag on non-condensing µNS mutants"></figure>
+      <figure data-ratio="2.2"><img src="figures/rescue.png" alt="Rescue of condensation by different tags"></figure>
+    </div>
+  </section>
+
+  <!-- ============ CONCLUSIONS: TAKE-HOME MESSAGES + FIGURE (white) ============ -->
+  <section class="slide light" data-section="1">
+    <h2>Conclusions</h2>
+    <div class="cols wide-left">
+      <div>
+        <ul class="takeaways">
+          <!-- Earlier wording, kept for reference:
+               Reovirus viral factory-like structures are (most likely) biomolecular condensates.
+               FP tags cause problematic experimental artifacts in phase-separated systems.
+               FP tags can promote, inhibit, and induce biomolecular condensation.
+               FP tags are tremendous tools, but it is unreliable to assume that they are inert – it is good practice to cross-validate tags.
+               Biomolecular condensation is extremely dynamic and sensitive to perturbations. -->
+          <li>µNS inclusions are, most likely, biomolecular condensates.</li>
+          <li>GFP tags promoted condensation of wild-type µNS.</li>
+          <li>Many tags induced condensation of non-condensing µNS mutants.</li>
+          <li>Cross-validate: an untagged control and more than one tag.</li>
+        </ul>
+      </div>
+      <div>
+        <div class="figrow">
+          <figure data-ratio="1">
+            <img src="figures/embo.png" alt="Figure from Dörner et al. 2026">
+            <figcaption>Dörner et al. (2026). EMBO Rep.</figcaption>
+          </figure>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============ LARGE PANEL + SMALL FIGURE, ONE SOURCE (white) ============ -->
+  <section class="slide light" data-section="1">
+    <h2>Tags affected translation and condensation independently</h2>
+    <p class="sub">Phase separation depends on concentration; proteostasis sets concentration.</p>
+    <!-- data-scale: weis.png is drawn at 0.45 of fatti.png's height. -->
+    <div class="figrow middle">
+      <figure data-ratio="1.4"><img src="figures/fatti.png" alt="Figure panel from Fatti, Khawaja and Weis 2025"></figure>
+      <figure data-ratio="1" data-scale="0.45"><img src="figures/weis.png" alt="Figure from Fatti, Khawaja and Weis 2025"></figure>
+    </div>
+    <p class="rowsource">Fatti, Khawaja and Weis (2025). MBoC.</p>
+    <p class="question">Open question: do tags change protein levels through synthesis, or through degradation?</p>
+  </section>
+
+  <!-- ============ SECTION DIVIDER ============ -->
+  <section class="slide divider split" data-section="2">
+    <div class="cols">
+      <div>
+        <h1>Virtual microscopy</h1>
+        <p>Reimag(in)ing Representative Images</p>
+        <p class="authors">Russell JR Barkley, Andrew J Brodrick, John SL Parker</p>
+      </div>
+      <div>
+        <div class="figrow" data-size="0.5">
+          <figure data-ratio="1.6"><video src="figures/microatlas.mp4" loop muted playsinline preload="auto"></video></figure>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============ TWO WIDE FIGURES (black) ============ -->
+  <section class="slide" data-section="2">
+    <h2>From representative images to whole datasets</h2>
+    <!-- oneline: smaller captions, each kept on one line -->
+    <div class="figrow oneline">
+      <figure data-ratio="1.8">
+        <img src="figures/embed.png" alt="Embedding an interactive figure">
+        <figcaption>Virtual microscopy: motorized imaging and cloud hosting</figcaption>
+      </figure>
+      <figure data-ratio="1.8">
+        <img src="figures/abstract.png" alt="Abstract">
+        <figcaption>Experimental model: immunofluorescence assay of transfected-infected cells</figcaption>
+      </figure>
+    </div>
+  </section>
+
+  <!-- ============ ONE FIND NUCLEI VIEWER, FULL WIDTH ============ -->
+  <section class="slide" data-section="2">
+    <h2>Readers can inspect every cell for themselves</h2>
+    <div class="body">
+      <div class="viewer">
+        <template>
+          <!-- To set the starting position, zoom and channels, paste the code from the viewer's Embed dialog here. -->
+          <find-nuclei-viewer
+            id="fig-zdc"
+            url="https://nyu1.osn.mghpcc.org/barkley-replication/replicate_4/goodZDC.zarr"
+          ></find-nuclei-viewer>
+        </template>
+        <!-- Backup screenshot: <img class="still" src="stills/fig-zdc.png" alt="Describe the image"> -->
+      </div>
+    </div>
+  </section>
+
+
+  <!-- ============ ONGOING WORK: VIEWER + LIVE READER ANALYTICS ============ -->
+  <section class="slide" data-section="2">
+    <h2>How do readers view interactive figures?</h2>
+    <img class="corner round" src="figures/labs.png" alt="openRxiv Labs">
+    <p class="sub">Ongoing: openRxiv Labs experiment proposal, in collaboration with Find Nuclei</p>
+    <div class="cols wide-left">
+      <div>
+        <div class="viewer">
+          <template>
+            <find-nuclei-viewer
+              id="fig-analytics"
+              url="https://nyu1.osn.mghpcc.org/barkley-replication/video.zarr"
+              autoplay fps="4"
+            ></find-nuclei-viewer>
+          </template>
+          <!-- Backup screenshot: <img class="still" src="stills/fig-analytics.png" alt="Time-lapse"> -->
+        </div>
+      </div>
+      <!-- This panel fills in live from what the viewer on this slide reports. Nothing leaves the page. -->
+      <div class="analytics"></div>
+    </div>
+  </section>
+
+  <!-- ============ SECTION DIVIDER ============ -->
+  <section class="slide divider" data-section="3">
+    <h1>Ubiquilin phase separation in cells</h1>
+    <p>Applying these methods to UBQLN</p>
+  </section>
+
+  <!-- ============ THE UBIQUILIN PITCH: THREE THREADS ============ -->
+  <section class="slide" data-section="3">
+    <h2>Measuring ubiquilin condensation across cell populations</h2>
+    <div class="threads">
+      <div>
+        <h3>Tags</h3>
+        <ul>
+          <li>Test the effect of tags on UBQLN condensation, live and fixed</li>
+        </ul>
+        <blockquote>
+          “the circularity and puncta area of eGFP-tagged proteins differs from that of FLAG-tagged proteins visualized in fixed cells”
+          <cite>Gerson et al. (2021). Sci Rep. Results, last paragraph.</cite>
+        </blockquote>
+      </div>
+      <div>
+        <h3>Proteostasis</h3>
+        <ul>
+          <li>Use fluorescent tags to study the interplay between condensation and proteostasis</li>
+          <li>Fluorescent timers to measure protein age; optoDroplets to control UBQLN condensation</li>
+        </ul>
+      </div>
+      <div>
+        <h3>Record</h3>
+        <div class="viewer">
+          <template>
+            <find-nuclei-viewer
+              id="fig-western-pitch"
+              url="https://nyu1.osn.mghpcc.org/barkley-replication/western.zarr"
+              channels="0:on:FF0000:0:35765,1:on:00FF00:84:43252,2:off:FFFFFF:65286:65534"
+              background="black"
+            ></find-nuclei-viewer>
+          </template>
+          <!-- Backup screenshot: <img class="still" src="stills/fig-western.png" alt="Western blot"> -->
+        </div>
+        <p class="caption">A western blot, streamed the same way.</p>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============ ACKNOWLEDGEMENTS (white) ============ -->
+  <section class="slide light">
+    <h2>Acknowledgements</h2>
+    <!-- Replace the text below with your GitHub Pages address once the site exists. -->
+    <p class="corner-link">your-github-pages-link</p>
+    <div class="ack">
+      <div>
+        <h3>Coauthors</h3>
+        <div class="people large">
+          <figure><img src="figures/john.png" alt="John Parker"><figcaption>John Parker</figcaption></figure>
+          <figure><img src="figures/andrew.png" alt="Andrew Brodrick"><figcaption>Andrew Brodrick</figcaption></figure>
+          <figure><img src="figures/jack.png" alt="Jack Crowley"><figcaption>Jack Crowley</figcaption></figure>
+          <figure><img src="figures/warren.png" alt="Warren Zipfel"><figcaption>Warren Zipfel</figcaption></figure>
+        </div>
+        <h3>Baker Institute for Animal Health</h3>
+        <div class="figrow">
+          <figure data-ratio="1.5"><img src="figures/baker.png" alt="Baker Institute for Animal Health"></figure>
+          <figure data-ratio="1.5"><img src="figures/FV3000.png" alt="FV3000 confocal microscope"></figure>
+        </div>
+      </div>
+      <div>
+        <h3>Elemental Microscopy<img src="figures/msa.png" alt=""></h3>
+        <p class="credit">Georgios Varnavides, PhD <span>Assistant Professor at Delft University of Technology</span></p>
+        <p class="credit">Colin Ophus, PhD <span>Associate Professor at Stanford University</span></p>
+        <h3>Curvenote<img src="figures/curvenote.png" alt=""></h3>
+        <p class="credit">Steve Purves, PhD <span>Co-founder &amp; CTO</span></p>
+        <h3>Cloud &amp; funding</h3>
+        <p class="credit">Gavin Biffar <span>San Diego Supercomputer Center</span></p>
+        <p class="credit">Find Nuclei <span>Open-source OME-Zarr viewer</span></p>
+        <p class="credit">NSF ACCESS Allocation BIO250450</p>
+      </div>
+    </div>
+    <div class="logos">
+      <img src="figures/mghpcc.png" alt="MGHPCC">
+      <img src="figures/osn.png" alt="Open Storage Network">
+      <img src="figures/nsf.png" alt="NSF">
+    </div>
+  </section>
+
+</main>
+
+<div id="progress"></div>
+<div id="thumb" aria-hidden="true"></div>
+<div id="mode">Still images (press V for live viewers)</div>
+<div id="nav">
+  <button id="prev" aria-label="Previous slide">&#8249;</button>
+  <button id="next" aria-label="Next slide">&#8250;</button>
+  <button id="full" aria-label="Fullscreen" title="Fullscreen (F)">
+    <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6" aria-hidden="true"><path d="M1.5 6V1.5H6M10 1.5h4.5V6M14.5 10v4.5H10M6 14.5H1.5V10"/></svg>
+  </button>
+</div>
+<div id="count"></div>
+
+<script>
+(function () {
+  var slides = Array.prototype.slice.call(document.querySelectorAll('.slide'));
+  var progress = document.getElementById('progress');
+  var count = document.getElementById('count');
+  var current = -1;
+  var stills = false;
+
+  // One numbered block per slide in the strip along the bottom, coloured by section.
+  // Click a block to go to that slide; hover to see a small preview of it.
+  var thumb = document.getElementById('thumb');
+  slides.forEach(function (sl, i) {
+    var tick = document.createElement('button');
+    tick.type = 'button';
+    tick.textContent = i + 1;
+    var heading = sl.querySelector('h1, h2');
+    tick.setAttribute('aria-label', 'Slide ' + (i + 1) + (heading ? ': ' + heading.textContent.trim() : ''));
+    if (sl.dataset.section) tick.dataset.section = sl.dataset.section;
+    tick.addEventListener('click', function () { show(i); tick.blur(); });
+    tick.addEventListener('mouseenter', function () { preview(i, tick); });
+    tick.addEventListener('mouseleave', function () { thumb.classList.remove('on'); });
+    progress.appendChild(tick);
+  });
+
+  // The preview is a scaled-down copy of the slide itself. Live viewers are shown as a labelled box.
+  function preview(i, tick) {
+    var sl = slides[i];
+    if (!sl._thumb) {
+      var copy = sl.cloneNode(true);
+      copy.classList.remove('active', 'leaving');
+      copy.removeAttribute('style');
+      copy.querySelectorAll('iframe, .osd, template, .notice').forEach(function (el) { el.remove(); });
+      copy.querySelectorAll('[id]').forEach(function (el) { el.removeAttribute('id'); });
+      copy.querySelectorAll('.viewer').forEach(function (el) { el.classList.remove('live', 'off'); });
+      copy.querySelectorAll('video').forEach(function (v) { v.removeAttribute('autoplay'); v.preload = 'metadata'; });
+      sl._thumb = copy;
+    }
+    thumb.textContent = '';
+    thumb.appendChild(sl._thumb);
+    thumb.style.background = sl.classList.contains('light') ? '#ffffff' : '#000000';
+    var r = tick.getBoundingClientRect(), w = 256;
+    thumb.style.left = Math.max(8, Math.min(window.innerWidth - w - 8, r.left + r.width / 2 - w / 2)) + 'px';
+    thumb.classList.add('on');
+  }
+
+  // Every viewer slot gets a message to show when it has neither a live viewer nor a still.
+  document.querySelectorAll('.viewer').forEach(function (slot) {
+    var p = document.createElement('p');
+    p.className = 'notice';
+    slot.appendChild(p);
+  });
+
+  // A static figure or video whose file is missing shows a dashed box naming the file it expects.
+  document.querySelectorAll('.figure img, .figure video, .figrow img, .figrow video, .people img, img.corner, .logos img, .ack h3 img').forEach(function (el) {
+    var isVideo = el.tagName === 'VIDEO';
+    function missing() {
+      var box = document.createElement('div');
+      if (el.closest('.people')) { box.className = 'face'; box.title = 'Waiting for ' + el.getAttribute('src'); }
+      else if (el.closest('h3')) { box = document.createElement('span'); box.className = 'mark'; box.title = 'Waiting for ' + el.getAttribute('src'); }
+      else {
+        box.className = 'placeholder' + ['corner', 'wide', 'round'].filter(function (c) { return el.classList.contains(c); }).map(function (c) { return ' ' + c; }).join('');
+        box.textContent = 'Waiting for ' + el.getAttribute('src');
+      }
+      var slide = el.closest('.slide');
+      el.replaceWith(box);
+      layoutFigrows(slide);
+    }
+    function ready() { layoutFigrows(el.closest('.slide')); }
+    if (isVideo) {
+      if (el.error) missing();
+      else {
+        el.addEventListener('error', missing);
+        el.addEventListener('loadedmetadata', ready);
+        el.addEventListener('click', function () { if (el.paused) el.play().catch(function () {}); else el.pause(); });
+      }
+    } else if (el.complete && el.naturalWidth === 0) missing();
+    else {
+      el.addEventListener('error', missing);
+      el.addEventListener('load', ready);
+    }
+  });
+
+  // Videos play from the start when their slide opens and stop when it closes.
+  function playVideos(slide, on) {
+    slide.querySelectorAll('video').forEach(function (v) {
+      try {
+        if (on) { v.currentTime = 0; var p = v.play(); if (p && p.catch) p.catch(function () {}); }
+        else v.pause();
+      } catch (err) {}
+    });
+  }
+
+  // Figure rows: size the figures in a row from each image's own shape, as large as the row allows.
+  // Default: one shared height. class "balance": about equal area. data-scale on a figure: a multiplier.
+  // Sizes are stored in em, so they scale with the slide (and in print).
+  function textWidth(el) {
+    var r = document.createRange();
+    r.selectNodeContents(el);
+    return Math.ceil(r.getBoundingClientRect().width) + 1;
+  }
+
+  function layoutFigrows(slide) {
+    if (!slide) return;
+    var em = parseFloat(getComputedStyle(slide).fontSize);
+    slide.querySelectorAll('.figrow').forEach(function (row) {
+      var figs = Array.prototype.slice.call(row.querySelectorAll('figure'));
+      if (!figs.length || !em) return;
+      var media = figs.map(function (f) { return f.querySelector('img, video, .placeholder'); });
+      var caps = figs.map(function (f) { return f.querySelector('figcaption'); });
+      var ratios = figs.map(function (f, i) {
+        var m = media[i];
+        if (m && m.naturalWidth) return m.naturalWidth / m.naturalHeight;
+        if (m && m.videoWidth) return m.videoWidth / m.videoHeight;
+        return parseFloat(f.dataset.ratio) || 4 / 3;
+      });
+      var balance = row.classList.contains('balance');
+      var scale = figs.map(function (f, i) { return (parseFloat(f.dataset.scale) || 1) * (balance ? 1 / Math.sqrt(ratios[i]) : 1); });
+      var top = Math.max.apply(null, scale);
+      scale = scale.map(function (x) { return x / top; });        // the tallest figure has scale 1
+      var widthUnits = ratios.reduce(function (sum, r, i) { return sum + r * scale[i]; }, 0);
+      var gap = parseFloat(getComputedStyle(row).columnGap) || 0;
+      var oneline = row.classList.contains('oneline');
+      var rowSize = Math.min(1, parseFloat(row.dataset.size) || 1);
+      caps.forEach(function (c) { if (c) c.style.minHeight = ''; });
+      figs.forEach(function (f) { f.style.paddingBottom = ''; });
+      var full = row.clientWidth - gap * (figs.length - 1), room = full, capH = 0;
+      for (var pass = 0; pass < 4; pass++) {       // captions re-wrap as widths change, so settle in a few passes
+        capH = 0;
+        caps.forEach(function (c) { if (c) capH = Math.max(capH, c.offsetHeight + parseFloat(getComputedStyle(c).marginTop)); });
+        var h = Math.min(row.clientHeight - capH, room / widthUnits) * rowSize;
+        if (!(h > 0)) return;
+        var used = 0;
+        figs.forEach(function (f, i) {
+          var fh = h * scale[i], fw = ratios[i] * fh;
+          // A one-line reference wider than its figure widens the figure's column, never the image.
+          var col = oneline && caps[i] ? Math.max(fw, textWidth(caps[i])) : fw;
+          used += col;
+          f.style.width = (col / em) + 'em';
+          if (media[i]) { media[i].style.width = (fw / em) + 'em'; media[i].style.height = (fh / em) + 'em'; }
+        });
+        if (used > full + 1) room -= used - full;
+      }
+      // Same caption height everywhere (and the same space under a figure with no caption),
+      // so the figures line up with each other.
+      var capMax = 0;
+      caps.forEach(function (c) { if (c) capMax = Math.max(capMax, c.offsetHeight); });
+      caps.forEach(function (c) { if (c) c.style.minHeight = (capMax / parseFloat(getComputedStyle(c).fontSize)) + 'em'; });
+      figs.forEach(function (f, i) { if (!caps[i] && capH) f.style.paddingBottom = (capH / em) + 'em'; });
+    });
+  }
+
+  function setNotice(slot, text) { slot.querySelector('.notice').textContent = text; }
+
+  // ---- Find Nuclei viewers -------------------------------------------------
+  // Each viewer is built inside its own frame. The viewer script keeps one image cache per page,
+  // keyed without the dataset address, so two datasets on one page would show the same pixels.
+  // A frame per viewer gives each its own cache. The frame also fills its panel at any window size.
+  var FN_SCRIPT = 'https://find-nuclei.github.io/embed/v1/viewer.js';
+  var FRAME_HEAD = '<!doctype html><html><head><meta charset="utf-8"><style>' +
+    'html,body{margin:0;height:100%;background:#000;overflow:hidden}' +
+    'find-nuclei-viewer{display:block;width:100%;height:100%}' +
+    'body.wait .fn-embed-canvas{opacity:0}' +
+    '</style><script src="' + FN_SCRIPT + '"><\/script></head><body>';
+  var FRAME_TAIL = '<script>(' + frameScript.toString() + ')();<\/script></body></html>';
+
+  // Runs inside the frame, not in the deck.
+  function frameScript() {
+    var el = document.querySelector('find-nuclei-viewer');
+    function tell(msg) { try { parent.postMessage(msg, '*'); } catch (err) {} }
+    function reveal() { document.body.classList.remove('wait'); }
+    if (!window.customElements || !customElements.get('find-nuclei-viewer')) { tell({ deck: 'viewer-failed' }); return; }
+
+    // Pass the viewer's reader-interaction events, and the image size, up to the deck.
+    document.addEventListener('fn-viewer:interaction', function (e) {
+      try { tell({ deck: 'interaction', detail: JSON.parse(JSON.stringify(e.detail)) }); } catch (err) {}
+    });
+    document.addEventListener('fn-viewer:loaded', function (e) {
+      try {
+        var m = (e.detail && e.detail.metadata) || {}, dims = m.planeDimensions || [];
+        tell({ deck: 'image-size', width: m.sizeX || dims[0] || 0, height: m.sizeY || dims[1] || 0 });
+      } catch (err) {}
+    });
+
+    // Clicker keys and Esc go back to the deck even while this frame has the keyboard.
+    window.addEventListener('keydown', function (e) {
+      if (e.key === 'PageDown' || e.key === 'PageUp' || e.key === 'Escape') {
+        e.preventDefault(); e.stopPropagation();
+        tell({ deck: 'key', key: e.key });
+      }
+    }, true);
+
+    // show-channels / hide-channels: once the image has loaded, switch channels on or off by name.
+    function words(attr) {
+      return (el.getAttribute(attr) || '').toLowerCase().split(',')
+        .map(function (w) { return w.trim(); }).filter(Boolean);
+    }
+    var show = words('show-channels'), hide = words('hide-channels');
+    function named(c, list) {
+      var name = String(c.name || '').toLowerCase();
+      return list.some(function (w) { return name.indexOf(w) >= 0; });
+    }
+
+    document.body.classList.add('wait');          // keep the image hidden until the channels are set
+    setTimeout(reveal, 15000);
+
+    function watch(node, secondPass) {
+      node.addEventListener('fn-viewer:error', reveal);
+      node.addEventListener('fn-viewer:loaded', function () {
+        try {
+          var v = node.viewer, chans = (v && v.activeChannels ? v.activeChannels : []).slice();
+          var names = chans.map(function (c) { return c.name; });
+          var showHits = show.length && chans.some(function (c) { return named(c, show); });
+          if (show.length && !showHits) console.warn('show-channels: no channel name contains', show, '- channels are', names);
+          if (hide.length && !chans.some(function (c) { return named(c, hide); })) console.warn('hide-channels: no channel name contains', hide, '- channels are', names);
+          var wantOn = chans.map(function (c) {
+            var on = showHits ? named(c, show) : c.active;
+            return on && !(hide.length && named(c, hide));
+          });
+          var colours = chans.map(function (c) { return String(c.color).replace('#', '').toUpperCase(); });
+
+          // Three channels coloured exactly red, green and blue make the viewer show a single
+          // "Brightness" control and a white background, as for a brightfield photo, even when the
+          // data is fluorescence. Reload once with blue nudged to 0001FF (looks the same) on black.
+          var looksRgb = chans.length === 3 && ['FF0000', '00FF00', '0000FF'].every(function (x) { return colours.indexOf(x) >= 0; });
+          var isRgbData = v.getDisplayMode && v.getDisplayMode() === 'rgb';
+          if (looksRgb && !isRgbData && !secondPass) {
+            var spec = chans.map(function (c, i) {
+              return c.index + ':' + (wantOn[i] ? 'on' : 'off') + ':' + (colours[i] === '0000FF' ? '0001FF' : colours[i]) +
+                     ':' + Math.round(c.min) + ':' + Math.round(c.max);
+            }).join(',');
+            var fresh = node.cloneNode(false);
+            fresh.setAttribute('channels', spec);
+            if (!fresh.hasAttribute('background')) fresh.setAttribute('background', 'black');
+            watch(fresh, true);
+            node.replaceWith(fresh);
+            return;
+          }
+
+          var set = function (c, on) { v.updateChannelSettings(c.index, c.min, c.max, on, String(c.color).replace('#', '')); };
+          chans.forEach(function (c, i) { if (!wantOn[i] && c.active) set(c, false); });
+          chans.forEach(function (c, i) { if (wantOn[i] && !c.active) set(c, true); });
+        } catch (err) { console.error(err); }
+        setTimeout(reveal, 200);
+      });
+    }
+    watch(el, false);
+  }
+
+  function mountFindNuclei(slot) {
+    var tpl = slot.querySelector('template');
+    if (!tpl) return false;
+    var holder = document.createElement('div');
+    holder.appendChild(tpl.content.cloneNode(true));
+    var v = holder.querySelector('find-nuclei-viewer');
+    if (!v) return false;
+    v.setAttribute('width', '100%');
+    v.setAttribute('height', '100vh');            // the full height of its frame
+    var frame = document.createElement('iframe');
+    frame.className = 'fn';
+    frame.title = v.id || 'Interactive image';
+    frame.setAttribute('allow', 'fullscreen');
+    frame.setAttribute('allowfullscreen', '');
+    frame.srcdoc = FRAME_HEAD + v.outerHTML + FRAME_TAIL;
+    slot.insertBefore(frame, slot.firstChild);
+    return true;
+  }
+
+  // Messages from the viewer frames on the current slide.
+  window.addEventListener('message', function (e) {
+    var d = e.data;
+    if (!d || !d.deck || current < 0) return;
+    var frame = null;
+    slides[current].querySelectorAll('iframe.fn').forEach(function (f) { if (f.contentWindow === e.source) frame = f; });
+    if (!frame) return;
+    if (d.deck === 'key') {
+      if (d.key === 'PageDown') show(current + 1);
+      else if (d.key === 'PageUp') show(current - 1);
+      else { frame.blur(); window.focus(); }      // Esc: keyboard back to the deck
+    } else if (d.deck === 'interaction' || d.deck === 'image-size') {
+      var panel = frame.closest('.slide').querySelector('.analytics');
+      if (panel) analytics(panel, d);
+    } else if (d.deck === 'viewer-failed') {
+      var slot = frame.parentElement;
+      frame.remove();
+      slot.classList.remove('live');
+      slot.classList.add('off');
+      setNotice(slot, 'The viewer script did not load (no connection?) and this panel has no still image yet.');
+    }
+  });
+
+  // ---- Live reader analytics ---------------------------------------------------
+  // Shows what the viewer on the same slide reports through its 'fn-viewer:interaction' events:
+  // a heat map of the areas viewed, weighted by time, and the latest events.
+  function analytics(panel, msg) {
+    var st = panel._st;
+    if (!st) {
+      panel.innerHTML =
+        '<div class="map"><div class="maphead"><b>Attention Map</b>' +
+        '<span class="legend">less time<i></i>more time</span></div><canvas></canvas></div>' +
+        '<table><thead><tr><th>Time</th><th>Action</th><th>x</th><th>y</th><th>Zoom</th><th>Frame</th></tr></thead>' +
+        '<tbody><tr><td class="wait" colspan="6">Waiting for the viewer to load.</td></tr>' +
+        new Array(6).join('<tr><td colspan="6">&nbsp;</td></tr>') + '</tbody></table>';
+      st = panel._st = { views: [], rows: [], n: 0, shown: 0, since: null, w: 0, h: 0 };
+      st.timer = setInterval(function () {
+        var here = panel.closest('.slide').classList.contains('active');
+        if (!here && st.since) { st.shown += Date.now() - st.since; st.since = null; }   // left the slide: stop the clock
+        if (!here) return;
+        drawViews(panel);                          // the current view keeps warming up while it is held
+      }, 250);
+    }
+    if (msg.deck === 'image-size') { st.w = msg.width; st.h = msg.height; drawViews(panel); return; }
+    var d = msg.detail || {}, view = d.view || {};
+    if (d.action === 'ready') {                  // a fresh viewer: start again
+      st.views = []; st.rows = []; st.n = 0; st.shown = 0; st.since = Date.now();
+    }
+    if (d.action === 'visible' && !st.since) st.since = Date.now();
+    if (d.action === 'hidden' && st.since) { st.shown += Date.now() - st.since; st.since = null; }
+    if (d.action !== 'ready' && d.action !== 'visible' && d.action !== 'hidden') st.n++;
+    // Each view is kept with the moment it began; how long it was held is its weight in the map.
+    if (view.bounds) st.views.push({ b: view.bounds, t0: Date.now(), counts: d.action !== 'hidden' });
+    var when = new Date(d.time || Date.now());
+    var num = function (v, places) { return typeof v === 'number' ? v.toFixed(places) : ''; };
+    st.rows.unshift([when.toLocaleTimeString([], { hour12: false }), d.action || '', num(view.x, 0), num(view.y, 0), num(view.zoom, 2), d.t == null ? '' : d.t]);
+    st.rows.length = Math.min(st.rows.length, 6);
+    panel.querySelector('tbody').innerHTML = st.rows.map(function (r) {
+      return '<tr>' + r.map(function (c) { return '<td>' + String(c).replace(/[<&]/g, '') + '</td>'; }).join('') + '</tr>';
+    }).join('') + new Array(7 - st.rows.length).join('<tr><td colspan="6">&nbsp;</td></tr>');   // always six rows tall
+    drawViews(panel);
+  }
+
+  // Colour ramp for the attention map: dark for little time, through purple and orange, to pale yellow.
+  var HEAT = [[27, 27, 27], [59, 15, 112], [140, 41, 129], [222, 73, 104], [254, 159, 109], [252, 253, 191]];
+  function heatColour(v) {
+    var x = Math.max(0, Math.min(1, v)) * (HEAT.length - 1), i = Math.min(HEAT.length - 2, Math.floor(x)), f = x - i;
+    return [0, 1, 2].map(function (c) { return Math.round(HEAT[i][c] + (HEAT[i + 1][c] - HEAT[i][c]) * f); });
+  }
+
+  function drawViews(panel) {
+    var st = panel._st, cv = panel.querySelector('canvas');
+    if (!st || !cv || !cv.clientWidth) return;
+    var ratio = window.devicePixelRatio || 1, W = cv.clientWidth, H = cv.clientHeight;
+    if (cv.width !== Math.round(W * ratio) || cv.height !== Math.round(H * ratio)) { cv.width = Math.round(W * ratio); cv.height = Math.round(H * ratio); }
+    var g = cv.getContext('2d');
+    g.setTransform(ratio, 0, 0, ratio, 0, 0);
+    g.clearRect(0, 0, W, H);
+    // Image extent: the reported size, or failing that the first (fitted) view.
+    var iw = st.w, ih = st.h, first = st.views[0];
+    if ((!iw || !ih) && first) { iw = first.b[2] - first.b[0]; ih = first.b[3] - first.b[1]; }
+    if (!iw || !ih) return;
+    var k = Math.min((W - 16) / iw, (H - 16) / ih), ox = (W - iw * k) / 2, oy = (H - ih * k) / 2;
+
+    // Seconds each part of the image has been in view, on a coarse grid.
+    var gw = 72, gh = Math.max(1, Math.round(gw * ih / iw)), secs = new Float32Array(gw * gh), peak = 0, now = Date.now();
+    st.views.forEach(function (v, n) {
+      if (!v.counts) return;
+      var next = st.views[n + 1], end = next ? next.t0 : (st.since ? now : v.t0);
+      var held = Math.max(0, end - v.t0) / 1000;
+      if (!held) return;
+      var x0 = Math.max(0, Math.floor(v.b[0] / iw * gw)), x1 = Math.min(gw, Math.ceil(v.b[2] / iw * gw));
+      var y0 = Math.max(0, Math.floor(v.b[1] / ih * gh)), y1 = Math.min(gh, Math.ceil(v.b[3] / ih * gh));
+      for (var y = y0; y < y1; y++) for (var x = x0; x < x1; x++) { var q = y * gw + x; secs[q] += held; if (secs[q] > peak) peak = secs[q]; }
+    });
+    var grid = st.grid || (st.grid = document.createElement('canvas'));
+    grid.width = gw; grid.height = gh;
+    var gg = grid.getContext('2d'), img = gg.createImageData(gw, gh);
+    for (var q = 0; q < secs.length; q++) {
+      var c = heatColour(peak ? secs[q] / peak : 0);
+      img.data[q * 4] = c[0]; img.data[q * 4 + 1] = c[1]; img.data[q * 4 + 2] = c[2]; img.data[q * 4 + 3] = 255;
+    }
+    gg.putImageData(img, 0, 0);
+    g.imageSmoothingEnabled = true;
+    g.drawImage(grid, ox, oy, iw * k, ih * k);
+    g.strokeStyle = '#555'; g.lineWidth = 1; g.strokeRect(ox + 0.5, oy + 0.5, iw * k - 1, ih * k - 1);
+    var last = st.views[st.views.length - 1];
+    if (last) {                                                // the current view, outlined
+      g.save(); g.beginPath(); g.rect(ox, oy, iw * k, ih * k); g.clip();
+      g.strokeStyle = '#ffffff'; g.lineWidth = 1.5;
+      g.strokeRect(ox + last.b[0] * k, oy + last.b[1] * k, (last.b[2] - last.b[0]) * k, (last.b[3] - last.b[1]) * k);
+      g.restore();
+    }
+  }
+
+  // ---- OpenSeadragon deep zoom viewers (Zoomify tiles) ----------------------
+  function mountDeepZoom(slot) {
+    if (typeof OpenSeadragon === 'undefined') return false;
+    var d = slot.dataset;
+    var root = d.zoomify.replace(/\/?$/, '/');
+    var el = document.createElement('div');
+    el.className = 'osd';
+    slot.insertBefore(el, slot.firstChild);
+    var v = OpenSeadragon({
+      element: el,
+      showNavigator: false,
+      showNavigationControl: false,
+      tileSources: {
+        type: 'zoomifytileservice',
+        tilesUrl: root,
+        width: +d.width,
+        height: +d.height,
+        tileSize: +(d.tileSize || 256),
+        fileFormat: d.format || 'jpg'
+      }
+    });
+    var pxPerMicron = parseFloat(d.pxPerMicron);
+    if (pxPerMicron && OpenSeadragon.ScalebarType) {
+      v.addHandler('open', function () {
+        v.scalebar({
+          type: OpenSeadragon.ScalebarType.MICROSCOPY,
+          pixelsPerMeter: pxPerMicron * 1e6,
+          location: OpenSeadragon.ScalebarLocation.BOTTOM_LEFT,
+          xOffset: 12, yOffset: 12,
+          barThickness: 4,
+          color: 'white', fontColor: 'white',
+          backgroundColor: 'rgba(0,0,0,0.5)',
+          stayInsideImage: true
+        });
+      });
+    }
+    slot._osd = v;
+    return true;
+  }
+
+  // ---- Mounting and unmounting ---------------------------------------------
+  function mountViewers(slide) {
+    slide.querySelectorAll('.viewer').forEach(function (slot) {
+      if (slot.classList.contains('live')) return;
+      var ok = false;
+      if (!stills) {
+        try { ok = slot.dataset.zoomify ? mountDeepZoom(slot) : mountFindNuclei(slot); }
+        catch (err) { ok = false; console.error(err); }
+      }
+      slot.classList.toggle('live', ok);
+      slot.classList.toggle('off', !ok);
+      if (!ok) setNotice(slot, stills
+        ? 'Live viewer is off and this panel has no still image yet.'
+        : 'The viewer script did not load (no connection?) and this panel has no still image yet.');
+    });
+  }
+
+  function unmountViewers(slide) {
+    slide.querySelectorAll('.viewer').forEach(function (slot) {
+      if (slot._osd) { try { slot._osd.destroy(); } catch (err) {} slot._osd = null; }
+      slot.querySelectorAll('iframe.fn, .osd').forEach(function (v) { v.remove(); });
+      slot.classList.remove('live');
+    });
+  }
+
+  // ---- Navigation -----------------------------------------------------------
+  function cssTime(name) {
+    var v = getComputedStyle(document.documentElement).getPropertyValue(name).trim();
+    var ms = parseFloat(v) * (/ms$/.test(v) ? 1 : 1000);
+    return isFinite(ms) ? ms : 0;
+  }
+
+  // The old slide stays visible under the new one until the fade ends, then its viewers are removed.
+  function retire(slide, ms) {
+    slide.classList.remove('active');
+    slide.classList.add('leaving');
+    playVideos(slide, false);
+    clearTimeout(slide._retire);
+    slide._retire = setTimeout(function () {
+      slide.classList.remove('leaving');
+      if (!slide.classList.contains('active')) unmountViewers(slide);
+    }, ms + 30);
+  }
+
+  function show(n) {
+    n = Math.max(0, Math.min(slides.length - 1, n));
+    if (n === current) return;
+    // A change between black and white gets the slower fade.
+    var toLight = slides[n].classList.contains('light');
+    var contrast = current >= 0 && slides[current].classList.contains('light') !== toLight;
+    var ms = cssTime(contrast ? '--fade-contrast' : '--fade');
+    if (current >= 0) retire(slides[current], ms);
+    current = n;
+    clearTimeout(slides[n]._retire);
+    slides[n].classList.remove('leaving');
+    slides[n].style.animationDuration = ms + 'ms';
+    document.body.style.transitionDuration = ms + 'ms';
+    slides[n].classList.add('active');
+    document.body.classList.toggle('light', toLight);
+    layoutFigrows(slides[n]);
+    mountViewers(slides[n]);
+    playVideos(slides[n], true);
+    Array.prototype.forEach.call(progress.children, function (t, i) { t.classList.toggle('done', i <= n); t.classList.toggle('current', i === n); });
+    count.textContent = (n + 1) + ' / ' + slides.length;
+    // Remember the slide in the address bar. Sandboxed previews forbid this, so ignore a refusal.
+    try { if (location.hash !== '#' + (n + 1)) history.replaceState(null, '', '#' + (n + 1)); } catch (err) {}
+    if (document.activeElement && document.activeElement !== document.body) document.activeElement.blur();
+  }
+
+  function setStills(on) {
+    stills = on;
+    document.body.classList.toggle('stills', on);
+    if (current < 0) return;
+    unmountViewers(slides[current]);
+    mountViewers(slides[current]);
+  }
+
+  function insideViewer(e) {
+    var path = e.composedPath ? e.composedPath() : [];
+    for (var i = 0; i < path.length; i++) {
+      var el = path[i];
+      if (!el.tagName) continue;
+      if (el.classList && el.classList.contains('viewer')) return true;
+      if (/^(INPUT|TEXTAREA|SELECT)$/.test(el.tagName)) return true;
+    }
+    return false;
+  }
+
+  // Capture phase, so PageUp/PageDown reach the deck before a focused viewer sees them.
+  window.addEventListener('keydown', function (e) {
+    if (e.metaKey || e.ctrlKey || e.altKey) return;
+    var k = e.key;
+    if (k === 'PageDown') { e.preventDefault(); e.stopPropagation(); return show(current + 1); }
+    if (k === 'PageUp')   { e.preventDefault(); e.stopPropagation(); return show(current - 1); }
+    if (k === 'Escape' && insideViewer(e)) { if (document.activeElement) document.activeElement.blur(); return; }
+    if (insideViewer(e)) return;               // the viewer keeps arrows, space and letters while it has focus
+    if (k === 'ArrowRight' || k === ' ' || k === 'Enter') { e.preventDefault(); show(current + 1); }
+    else if (k === 'ArrowLeft' || k === 'Backspace')      { e.preventDefault(); show(current - 1); }
+    else if (k === 'Home') { e.preventDefault(); show(0); }
+    else if (k === 'End')  { e.preventDefault(); show(slides.length - 1); }
+    else if (k === 'f' || k === 'F') toggleFullscreen();
+    else if (k === 'v' || k === 'V') setStills(!stills);
+  }, true);
+
+  // Clicking anywhere outside a viewer hands the keyboard back to the deck.
+  window.addEventListener('pointerdown', function (e) {
+    if (!insideViewer(e) && document.activeElement && document.activeElement !== document.body) {
+      document.activeElement.blur();
+    }
+  }, true);
+
+  document.getElementById('prev').addEventListener('click', function () { show(current - 1); });
+  document.getElementById('next').addEventListener('click', function () { show(current + 1); });
+
+  // Fullscreen. Viewers resize themselves; nothing is rebuilt.
+  function toggleFullscreen() {
+    var root = document.documentElement;
+    var active = document.fullscreenElement || document.webkitFullscreenElement;
+    try {
+      var done = active
+        ? (document.exitFullscreen || document.webkitExitFullscreen).call(document)
+        : (root.requestFullscreen || root.webkitRequestFullscreen).call(root);
+      if (done && done.catch) done.catch(function () {});   // refused, for example inside a preview pane
+    } catch (err) {}
+  }
+  document.getElementById('full').addEventListener('click', function () { toggleFullscreen(); this.blur(); });
+
+  window.addEventListener('hashchange', function () {
+    var n = parseInt(location.hash.slice(1), 10);
+    if (n) show(n - 1);
+  });
+
+  slides.forEach(layoutFigrows);
+  show((parseInt(location.hash.slice(1), 10) || 1) - 1);
+})();
+</script>
+</body>
+</html>
