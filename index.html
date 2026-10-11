@@ -80,6 +80,8 @@
     The numbered strip along the bottom has one block per slide: hover for a preview, click to go there.
     V                          swap live viewers for their still images
     S                          save a still image of each live viewer on this slide
+    R                          record a short backup video of each live viewer on this slide
+                               (a zoom in and out, or one loop of a time-lapse); R again cancels
     Esc                        hand the keyboard back to the deck after using a viewer
   PageDown and PageUp (what most presentation clickers send) always change slide,
   even while a viewer has focus.
@@ -365,7 +367,10 @@
   .viewer .notice { display: none; position: absolute; inset: 0; place-items: center; text-align: center;
                     padding: 2em; color: #9b9b9b; font-size: 1.1em; line-height: 1.4; }
   .viewer.off img.still { display: block; }
-  .viewer.off:not(:has(img.still)) .notice { display: grid; }
+  /* A backup video, when its file exists, plays over the still image */
+  .viewer video.stillv { display: none; position: absolute; inset: 0; width: 100%; height: 100%; object-fit: contain; background: #000; }
+  .viewer.off video.stillv { display: block; }
+  .viewer.off:not(:has(img.still, video.stillv)) .notice { display: grid; }
 
   /* Deck furniture */
   /* The strip along the bottom: one numbered block per slide. Hover for a preview, click to go there. */
@@ -1031,7 +1036,7 @@
       var copy = sl.cloneNode(true);
       copy.classList.remove('active', 'leaving');
       copy.removeAttribute('style');
-      copy.querySelectorAll('iframe, .osd, template, .notice').forEach(function (el) { el.remove(); });
+      copy.querySelectorAll('iframe, .osd, template, .notice, video.stillv').forEach(function (el) { el.remove(); });
       copy.querySelectorAll('[id]').forEach(function (el) { el.removeAttribute('id'); });
       copy.querySelectorAll('.viewer').forEach(function (el) { el.classList.remove('live', 'off'); });
       copy.querySelectorAll('video').forEach(function (v) { v.removeAttribute('autoplay'); v.preload = 'metadata'; });
@@ -1055,6 +1060,17 @@
     if (still) {
       slot.dataset.still = still.getAttribute('src');
       still.addEventListener('error', function () { still.remove(); });
+      // The backup video has the same name as the still: stills/name.webm (or .mp4). It is only
+      // fetched when it is needed, and if there is no such file the still image shows instead.
+      var clip = document.createElement('video');
+      clip.className = 'stillv';
+      clip.loop = true; clip.muted = true; clip.playsInline = true; clip.preload = 'none';
+      clip._names = ['.webm', '.mp4'].map(function (ext) { return slot.dataset.still.replace(/\.[a-z0-9]+$/i, ext); });
+      clip.addEventListener('error', function () {
+        if (clip._names.length) { clip.src = clip._names.shift(); playClip(slot); }
+        else clip.remove();
+      });
+      slot.insertBefore(clip, still.nextSibling);
     }
   });
 
@@ -1090,7 +1106,7 @@
 
   // Videos play from the start when their slide opens and stop when it closes.
   function playVideos(slide, on) {
-    slide.querySelectorAll('video').forEach(function (v) {
+    slide.querySelectorAll('video:not(.stillv)').forEach(function (v) {
       try {
         if (on) { v.currentTime = 0; var p = v.play(); if (p && p.catch) p.catch(function () {}); }
         else v.pause();
@@ -1155,6 +1171,18 @@
       caps.forEach(function (c) { if (c) c.style.minHeight = (capMax / parseFloat(getComputedStyle(c).fontSize)) + 'em'; });
       figs.forEach(function (f, i) { if (!caps[i] && capH) f.style.paddingBottom = (capH / em) + 'em'; });
     });
+  }
+
+  // Start or stop the backup video in a viewer panel.
+  function playClip(slot) {
+    var clip = slot.querySelector('video.stillv');
+    if (!clip) return;
+    if (!clip.getAttribute('src')) clip.src = clip._names.shift();
+    try { var p = clip.play(); if (p && p.catch) p.catch(function () {}); } catch (err) {}
+  }
+  function stopClip(slot) {
+    var clip = slot.querySelector('video.stillv');
+    if (clip && clip.getAttribute('src')) { try { clip.pause(); } catch (err) {} }
   }
 
   function setNotice(slot, text) { slot.querySelector('.notice').textContent = text; }
@@ -1296,6 +1324,7 @@
       slot.classList.remove('live');
       slot.classList.add('off');
       setNotice(slot, 'The viewer did not load (no connection?). ' + stillHint(slot));
+      playClip(slot);
     }
   });
 
@@ -1392,7 +1421,9 @@
   }
 
   // ---- OpenSeadragon deep zoom viewers (Zoomify tiles) ----------------------
-  function mountDeepZoom(slot) {
+  // The tiles are asked for in a way that lets the picture be read back (for S and R) even when
+  // the deck is opened from a local file. If the tile server refuses that, "plain" asks the usual way.
+  function mountDeepZoom(slot, plain) {
     if (typeof OpenSeadragon === 'undefined') return false;
     var d = slot.dataset;
     var root = d.zoomify.replace(/\/?$/, '/');
@@ -1403,6 +1434,7 @@
       element: el,
       showNavigator: false,
       showNavigationControl: false,
+      crossOriginPolicy: plain ? false : 'Anonymous',
       tileSources: {
         type: 'zoomifytileservice',
         tilesUrl: root,
@@ -1428,6 +1460,17 @@
       });
     }
     slot._osd = v;
+    if (!plain) {
+      var anyTile = false;
+      v.addHandler('tile-loaded', function () { anyTile = true; });
+      v.addHandler('tile-load-failed', function () {
+        if (anyTile || slot._osd !== v) return;
+        try { v.destroy(); } catch (err) {}
+        el.remove();
+        slot._osd = null;
+        mountDeepZoom(slot, true);
+      });
+    }
     return true;
   }
 
@@ -1442,6 +1485,7 @@
       }
       slot.classList.toggle('live', ok);
       slot.classList.toggle('off', !ok);
+      if (ok) stopClip(slot); else playClip(slot);
       if (!ok) setNotice(slot, (stills ? 'Live viewer is off. ' : 'The viewer did not load (no connection?). ') + stillHint(slot));
     });
   }
@@ -1451,6 +1495,7 @@
       if (slot._osd) { try { slot._osd.destroy(); } catch (err) {} slot._osd = null; }
       slot.querySelectorAll('iframe.fn, .osd').forEach(function (v) { v.remove(); });
       slot.classList.remove('live');
+      stopClip(slot);
     });
   }
 
@@ -1531,11 +1576,169 @@
   // S saves a picture of each live viewer on the current slide, named as its still image expects.
   // Move the saved files into the "stills" folder next to this file.
   var modeEl = document.getElementById('mode'), modeText = modeEl.textContent, flashTimer = null;
-  function flash(text) {
+  function flash(text, ms) {
     modeEl.textContent = text;
     modeEl.style.display = 'block';
     clearTimeout(flashTimer);
-    flashTimer = setTimeout(function () { modeEl.textContent = modeText; modeEl.style.display = ''; }, 4000);
+    flashTimer = setTimeout(function () { modeEl.textContent = modeText; modeEl.style.display = ''; }, ms || 4000);
+  }
+  function saveFile(name, blob) {
+    var link = document.createElement('a');
+    link.href = URL.createObjectURL(blob);
+    link.download = name;
+    document.body.appendChild(link); link.click(); link.remove();
+    setTimeout(function () { URL.revokeObjectURL(link.href); }, 10000);
+  }
+
+  // ---- Recording backup videos ------------------------------------------------
+  // R records each live viewer on the current slide and saves a video named like its still image.
+  // A time-lapse is recorded playing through one loop. Anything else is recorded zooming in on the
+  // centre of the current view and back out. Each is run through once first, unrecorded, so the
+  // image data is already loaded when the recording is made. Move the saved files into "stills".
+  var rec = { busy: false, cancel: false };
+  function pause(ms) { return new Promise(function (done) { setTimeout(done, ms); }); }
+  function nextFrame() { return new Promise(function (done) { requestAnimationFrame(done); }); }
+  function ease(x) { return x < 0.5 ? 2 * x * x : 1 - Math.pow(-2 * x + 2, 2) / 2; }
+
+  // One way of driving either kind of viewer. Zoom is in doublings (each +1 is twice as close).
+  function driverFor(slot) {
+    var fr = slot.querySelector('iframe.fn');
+    if (fr) {
+      var doc = fr.contentDocument, node = doc.querySelector('find-nuclei-viewer'), v = node && node.viewer;
+      if (!v || !v.deck || !v.state) return null;
+      var numT = (v.imageMetadata && v.imageMetadata.numTimepoints) || 1;
+      return {
+        canvas: v.deck.getCanvas ? v.deck.getCanvas() : doc.querySelector('canvas'),
+        timelapse: numT > 1 && !!v.playback,
+        zoom: function () { return v.state.zoom; },
+        setZoom: function (z) { v.zoomTo(z, false); },
+        target: function (z0) { return z0 + Math.min(3, Math.max(1, -z0)); },   // up to 8x closer, to about full resolution
+        loading: function () { return !!v.tilesLoadingState; },
+        time: function () { return v.state.currentT; },
+        play: function () { if (!v.playback.isPlaying()) v.playback.play(); },
+        redraw: function () { if (v.deck.redraw) v.deck.redraw('recording'); }
+      };
+    }
+    if (slot._osd) {
+      var o = slot._osd, vp = o.viewport;
+      return {
+        canvas: o.drawer.canvas,
+        timelapse: false,
+        zoom: function () { return Math.log(vp.getZoom(true)) / Math.LN2; },
+        setZoom: function (z) { vp.zoomTo(Math.pow(2, z), null, true); },
+        target: function (z0) { return Math.min(Math.log(vp.getMaxZoom()) / Math.LN2, z0 + 3); },
+        loading: function () { var item = o.world.getItemAt(0); return !(item && item.getFullyLoaded()); },
+        redraw: function () { o.forceRedraw(); }
+      };
+    }
+    return null;
+  }
+
+  // Wait until the viewer has been quiet for a moment (or give up after a while).
+  async function settle(d, limit) {
+    var quiet = 0, t0 = Date.now();
+    while (quiet < 500 && Date.now() - t0 < (limit || 12000) && !rec.cancel) {
+      await pause(100);
+      quiet = d.loading() ? 0 : quiet + 100;
+    }
+  }
+
+  function startRecorder(canvas) {
+    var types = ['video/webm;codecs=vp9', 'video/webm;codecs=vp8', 'video/webm', 'video/mp4'], type = '';
+    for (var i = 0; i < types.length; i++) if (MediaRecorder.isTypeSupported(types[i])) { type = types[i]; break; }
+    var stream = canvas.captureStream(30), parts = [];
+    var mr = new MediaRecorder(stream, type ? { mimeType: type, videoBitsPerSecond: 12000000 } : undefined);
+    mr.ondataavailable = function (e) { if (e.data && e.data.size) parts.push(e.data); };
+    mr.start(500);
+    return {
+      ext: /mp4/.test(mr.mimeType || type) ? '.mp4' : '.webm',
+      stop: function () {
+        return new Promise(function (done) {
+          mr.onstop = function () {
+            stream.getTracks().forEach(function (t) { t.stop(); });
+            done(new Blob(parts, { type: (mr.mimeType || type || 'video/webm').split(';')[0] }));
+          };
+          try { mr.requestData(); } catch (err) {}
+          setTimeout(function () { mr.stop(); }, 150);
+        });
+      }
+    };
+  }
+
+  async function recordZoom(d, say) {
+    var z0 = d.zoom(), z1 = d.target(z0);
+    say('getting ready');
+    for (var z = z0; z < z1 + 0.01 && !rec.cancel; z += 0.5) { d.setZoom(Math.min(z, z1)); await settle(d); }
+    d.setZoom(z0); await settle(d);
+    if (rec.cancel) return null;
+    say('recording');
+    var r = startRecorder(d.canvas);
+    // hold, zoom in, hold, zoom out, hold (seconds)
+    var parts = [[0.8, z0, z0], [5, z0, z1], [1.5, z1, z1], [5, z1, z0], [0.6, z0, z0]];
+    for (var i = 0; i < parts.length && !rec.cancel; i++) {
+      var t0 = performance.now(), len = parts[i][0] * 1000, now;
+      do {
+        now = await nextFrame();
+        var x = Math.min(1, (now - t0) / len);
+        d.setZoom(parts[i][1] + (parts[i][2] - parts[i][1]) * ease(x));
+        d.redraw();                                // keeps frames flowing to the recording during the holds
+      } while (now - t0 < len && !rec.cancel);
+    }
+    d.setZoom(z0);
+    var blob = await r.stop();
+    return rec.cancel ? null : { blob: blob, ext: r.ext };
+  }
+
+  async function recordTimelapse(d, say) {
+    // Resolves when playback wraps round to the start again.
+    async function nextLoop(limit, redraw) {
+      var last = d.time(), t0 = Date.now();
+      while (Date.now() - t0 < limit && !rec.cancel) {
+        if (redraw) { await nextFrame(); d.redraw(); } else await pause(30);
+        var t = d.time();
+        if (t < last) return true;
+        last = t;
+      }
+      return false;
+    }
+    d.play();
+    say('loading every frame (this takes one or two loops)');
+    await nextLoop(300000);                       // finish the loop in progress
+    if (!rec.cancel) await nextLoop(300000);      // one whole loop, so every frame is in memory
+    if (rec.cancel) return null;
+    say('recording');
+    var r = startRecorder(d.canvas), began = Date.now();
+    // Whole loops, redrawn every frame so the video keeps the real timing; a short loop is repeated
+    // until the video is a few seconds long.
+    do { await nextLoop(120000, true); } while (Date.now() - began < 6000 && !rec.cancel);
+    var blob = await r.stop();
+    return rec.cancel ? null : { blob: blob, ext: r.ext };
+  }
+
+  async function recordVideos() {
+    if (rec.busy) { rec.cancel = true; flash('Stopping the recording.'); return; }
+    if (current < 0) return;
+    if (!window.MediaRecorder) { flash('This browser cannot record video. Try Chrome.'); return; }
+    var slide = slides[current], slots = Array.prototype.slice.call(slide.querySelectorAll('.viewer.live'));
+    if (!slots.length) { flash('No live viewer on this slide to record.'); return; }
+    rec.busy = true; rec.cancel = false;
+    var saved = [], failed = [];
+    for (var i = 0; i < slots.length && !rec.cancel; i++) {
+      var base = (slots[i].dataset.still || 'video.png').split('/').pop().replace(/\.[a-z0-9]+$/i, '');
+      var say = function (what) { flash(base + ' (' + (i + 1) + ' of ' + slots.length + '): ' + what + '. Press R to cancel.', 600000); };
+      try {
+        var d = driverFor(slots[i]);
+        if (!d || !d.canvas || !d.canvas.captureStream) throw new Error('viewer is not ready');
+        d.canvas.captureStream(0).getTracks().forEach(function (t) { t.stop(); });   // fails here, at once, if the picture cannot be read
+        var out = d.timelapse ? await recordTimelapse(d, say) : await recordZoom(d, say);
+        if (slides[current] !== slide) rec.cancel = true;      // the slide was changed part way through
+        if (out && !rec.cancel) { saveFile(base + out.ext, out.blob); saved.push(base + out.ext); }
+      } catch (err) { failed.push(base + ' (' + (err && err.name === 'SecurityError' ? 'the browser will not let this picture be read' : (err && err.message) || 'error') + ')'); console.error(err); }
+    }
+    flash((rec.cancel ? 'Recording cancelled. ' : '') +
+          (saved.length ? 'Saved ' + saved.join(', ') + '. Move to the stills folder. ' : '') +
+          (failed.length ? 'Could not record ' + failed.join(', ') + '.' : ''), 8000);
+    rec.busy = false; rec.cancel = false;
   }
   function pictureOf(slot) {
     var frame = slot.querySelector('iframe.fn');
@@ -1599,6 +1802,7 @@
     else if (k === 'f' || k === 'F') toggleFullscreen();
     else if (k === 'v' || k === 'V') setStills(!stills);
     else if (k === 's' || k === 'S') saveStills();
+    else if (k === 'r' || k === 'R') recordVideos();
   }, true);
 
   // Clicking anywhere outside a viewer hands the keyboard back to the deck.
