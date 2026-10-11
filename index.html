@@ -239,6 +239,12 @@
   .outline { display: grid; gap: 1.5em; margin-top: 0.4em; align-content: start; }
   .cols.outline-cols { grid-template-columns: 11fr 10fr; }
   .outline-media { position: absolute; top: 1.6em; right: 1.6em; bottom: 2.2em; left: 52%; }
+  /* A label that sits just above a figure without changing the figure's size or position */
+  .figrow figure { position: relative; }
+  .figrow figure .above { position: absolute; left: 0; right: 0; bottom: 100%; margin-bottom: 0.5em; text-align: center; font-size: 1.7em; line-height: 1; }
+  .frac { display: inline-flex; flex-direction: column; align-items: center; font-style: italic; }
+  .frac > span:first-child { border-bottom: 0.07em solid currentColor; padding: 0 0.25em 0.12em; }
+  .frac > span:last-child { padding-top: 0.12em; }
   ul.subpoints { margin: -0.2em 0 0.9em; }
   ul.subpoints li { font-size: 1.2em; margin-bottom: 0.25em; }
   .cols > .outline { display: grid; }          /* keep the grid when the outline sits in a column */
@@ -290,6 +296,7 @@
   .threads h3 { font-size: 1.5em; padding-bottom: 0.3em; border-bottom: 0.1em solid var(--accent); margin-bottom: 0.6em; }
   .threads li { font-size: 1.12em; line-height: 1.3; margin-bottom: 0.5em; }
   .threads ul { margin-bottom: 0.8em; }
+  .threads li .ref { display: block; font-size: 0.72em; color: var(--muted); margin-top: 0.2em; }
   .threads .caption { font-size: 0.8em; margin-top: 0.5em; }
   .threads blockquote { margin: 0.4em 0 0; padding: 0.2em 0 0.2em 1em; border-left: 0.2em solid var(--accent); font-size: 1.1em; line-height: 1.4; }
   .threads blockquote cite { white-space: nowrap; font-size: 0.7em !important; }
@@ -301,7 +308,7 @@
   .figure.fill .placeholder { position: absolute; inset: 0; width: auto; height: auto; }
 
   /* Recap list: a term on the left, one line on the right */
-  dl.recap { display: grid; grid-template-columns: max-content 1fr; gap: 0.9em 2em; margin: 0.6em 0 0; font-size: 1.35em; }
+  dl.recap { display: grid; grid-template-columns: max-content 1fr; gap: 0.95em 1.4em; margin: 0.6em 0 0; font-size: 1.22em; }
   dl.recap dt { font-weight: 600; color: var(--accent); }
   dl.recap dd { margin: 0; }
   p.pivot { margin-top: 2em; font-size: 1.7em; font-weight: 600; }
@@ -583,6 +590,7 @@
   <!-- ============ FUSION AND FISSION: THREE FIGURES FROM ONE PAPER (white) ============ -->
   <section class="slide light" data-section="1">
     <h2>µNS inclusions fuse and relax like liquids</h2>
+    <p class="sub">Inverse capillary velocity: the ratio of viscosity (η) to surface tension (γ)</p>
     <ul class="points-row">
       <li class="faded">Round morphology</li>
       <li>Fusion and fission</li>
@@ -593,7 +601,11 @@
     <div class="figrow middle">
       <figure data-ratio="0.5"><img src="figures/fusionA.png" alt="Fusion of µNS inclusions, panel A"></figure>
       <figure data-ratio="1" data-scale="0.6"><img src="figures/fusionB.png" alt="Fusion of µNS inclusions, panel B"></figure>
-      <figure data-ratio="1" data-scale="0.6"><img src="figures/fusionC.png" alt="Fusion of µNS inclusions, panel C"></figure>
+      <figure data-ratio="1" data-scale="0.6">
+        <!-- Viscosity over surface tension, shown above this figure -->
+        <span class="above"><span class="frac" role="img" aria-label="eta over gamma"><span>η</span><span>γ</span></span></span>
+        <img src="figures/fusionC.png" alt="Fusion of µNS inclusions, panel C">
+      </figure>
     </div>
   </section>
 
@@ -714,7 +726,7 @@
     <h2>µNS inclusions behave like biomolecular condensates</h2>
     <div class="body">
       <dl class="recap">
-        <dt>Round morphology</dt><dd>Round in transfected cells, and in infected cells once freed from microtubules</dd>
+        <dt>Round morphology</dt><dd>Round in transfected cells, and in infected cells freed from microtubules</dd>
         <dt>Fusion and fission</dt><dd>Inclusions fuse and relax to spheres</dd>
         <dt>Internal rearrangement</dt><dd>µNS moves within inclusions, slowly</dd>
         <dt>Saturation concentration</dt><dd>Inclusions appear above a threshold concentration</dd>
@@ -742,7 +754,7 @@
   <section class="slide light" data-section="1">
     <h2>Tags rescued mutants that should not condense</h2>
     <ul class="subpoints">
-      <li>5 to 75% of cells formed condensates</li>
+      <li>Two tags rescued condensation of 4 of 6 non-condensing mutants, in a fraction of cells</li>
     </ul>
     <div class="figrow">
       <figure data-ratio="1.5">
@@ -758,7 +770,7 @@
   <section class="slide light" data-section="1">
     <h2>Rescue depended on the tag</h2>
     <ul class="subpoints">
-      <li>0 to 50% of cells formed condensates</li>
+      <li>Of the tags screened on 2 of these mutants, only HaloTag did not rescue condensation</li>
     </ul>
     <div class="figrow" data-size="0.8">
       <figure data-ratio="2.2"><img src="figures/halotag.png" alt="HaloTag on non-condensing µNS mutants"></figure>
@@ -891,12 +903,14 @@
 
   <!-- ============ THE UBIQUILIN PITCH: THREE THREADS ============ -->
   <section class="slide" data-section="3">
-    <h2>Fluorescent tags and ubiquilin condensation: what I would test first</h2>
+    <h2>Fluorescent tags and ubiquilin condensation: brainstorm</h2>
     <div class="threads">
       <div>
         <h3>Tags</h3>
         <ul>
-          <li>Test the effect of tags on UBQLN condensation, live and fixed</li>
+          <li>Test the effect of tags on UBQLN condensation in cells, live and fixed</li>
+          <li>Dynamics in living cells need tags; in vitro, untagged protein works</li>
+          <li>In vitro: mix tagged into untagged UBQLN at set ratios (1:99 and up) to measure what the tag does</li>
         </ul>
         <blockquote>
           “the circularity and puncta area of eGFP-tagged proteins differs from that of FLAG-tagged proteins visualized in fixed cells”
@@ -912,6 +926,10 @@
       </div>
       <div>
         <h3>Record</h3>
+        <ul>
+          <li>Lab meetings and calls with collaborators, opened from a GitHub Pages link</li>
+          <li>Datasets shared as links with Vizarr <span class="ref">Manz et al. (2022). Nat Methods.</span></li>
+        </ul>
         <div class="viewer">
           <template>
             <find-nuclei-viewer
