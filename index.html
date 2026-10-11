@@ -1215,7 +1215,7 @@
     setTimeout(reveal, 15000);
 
     function watch(node, secondPass) {
-      node.addEventListener('fn-viewer:error', function () { reveal(); tell({ deck: 'viewer-failed' }); });
+      node.addEventListener('fn-viewer:error', reveal);
       node.addEventListener('fn-viewer:loaded', function () {
         try {
           var v = node.viewer, chans = (v && v.activeChannels ? v.activeChannels : []).slice();
@@ -1526,9 +1526,6 @@
     unmountViewers(slides[current]);
     mountViewers(slides[current]);
   }
-
-  // The browser reports that the connection has gone: say so, and leave the choice to the speaker.
-  window.addEventListener('offline', function () { if (!stills) flash('Connection lost. Press V for still images.'); });
 
   // ---- Saving still images ---------------------------------------------------
   // S saves a picture of each live viewer on the current slide, named as its still image expects.
