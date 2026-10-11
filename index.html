@@ -1215,7 +1215,7 @@
     setTimeout(reveal, 15000);
 
     function watch(node, secondPass) {
-      node.addEventListener('fn-viewer:error', reveal);
+      node.addEventListener('fn-viewer:error', function () { reveal(); tell({ deck: 'viewer-failed' }); });
       node.addEventListener('fn-viewer:loaded', function () {
         try {
           var v = node.viewer, chans = (v && v.activeChannels ? v.activeChannels : []).slice();
@@ -1498,13 +1498,37 @@
     if (document.activeElement && document.activeElement !== document.body) document.activeElement.blur();
   }
 
+  // The offline copy starts without OpenSeadragon. Fetch it the first time live viewers are asked for.
+  var OSD_SCRIPTS = ['https://russellbarkley.github.io/muNS_deepzoom/openseadragon/openseadragon.min.js',
+                     'https://russellbarkley.github.io/muNS_deepzoom/openseadragon/openseadragon-scalebar.js'];
+  var osdAsked = false;
+  function fetchDeepZoom() {
+    if (osdAsked || typeof OpenSeadragon !== 'undefined') return;
+    osdAsked = true;
+    (function next(i) {
+      if (i >= OSD_SCRIPTS.length) {             // ready: bring up any map waiting on the current slide
+        if (!stills && current >= 0) mountViewers(slides[current]);
+        return;
+      }
+      var tag = document.createElement('script');
+      tag.src = OSD_SCRIPTS[i];
+      tag.onload = function () { next(i + 1); };
+      tag.onerror = function () { osdAsked = false; };
+      document.head.appendChild(tag);
+    })(0);
+  }
+
   function setStills(on) {
     stills = on;
     document.body.classList.toggle('stills', on);
+    if (!on) fetchDeepZoom();
     if (current < 0) return;
     unmountViewers(slides[current]);
     mountViewers(slides[current]);
   }
+
+  // The browser reports that the connection has gone: say so, and leave the choice to the speaker.
+  window.addEventListener('offline', function () { if (!stills) flash('Connection lost. Press V for still images.'); });
 
   // ---- Saving still images ---------------------------------------------------
   // S saves a picture of each live viewer on the current slide, named as its still image expects.
